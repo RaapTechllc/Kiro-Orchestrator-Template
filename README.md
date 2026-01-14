@@ -1,156 +1,250 @@
-# Kiro Orchestrator Template
+<p align="center">
+  <img src="https://kiro.dev/logo.svg" alt="Kiro Logo" width="120" height="120">
+</p>
 
-A production-grade multi-agent orchestration framework implementing industry best practices from Anthropic, Claude-Flow, and Ralph Loop methodologies.
+<h1 align="center">🎭 Kiro Orchestrator Template</h1>
 
-## Quick Start
+<p align="center">
+  <strong>Production-ready multi-agent orchestration for Kiro CLI</strong>
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-agents">Agents</a> •
+  <a href="#-workflows">Workflows</a> •
+  <a href="#-self-improvement">Self-Improvement</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Kiro_CLI-Compatible-blue?style=flat-square" alt="Kiro CLI Compatible">
+  <img src="https://img.shields.io/badge/Agents-10-green?style=flat-square" alt="10 Agents">
+  <img src="https://img.shields.io/badge/Thread_Types-5-purple?style=flat-square" alt="5 Thread Types">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License">
+</p>
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-# 1. Copy to your project
-cp -r .kiro /path/to/your/project/
-cp CLAUDE.md PLAN.md PROGRESS.md /path/to/your/project/
+# Clone the template
+git clone https://github.com/RaapTechllc/Kiro-Orchestrator-Template.git my-project
+cd my-project
 
-# 2. Fill in project context
-# Edit .kiro/steering/product.md, tech.md, structure.md
-
-# 3. Define tasks in PLAN.md
-
-# 4. Run the orchestrator
+# Start the orchestrator
 kiro-cli --agent orchestrator
 ```
 
-## What's Included
+That's it. The orchestrator will guide you through spec-driven development with intelligent task delegation.
+
+---
+
+## ✨ Features
+
+### 🎯 Spec-Driven Development
+Structured workflow: **Requirements → Design → Tasks → Execute**
 
 ```
-├── CLAUDE.md                 # Minimal context (always loaded)
-├── PLAN.md                   # Task definitions
-├── PROGRESS.md               # Real-time status
-└── .kiro/
-    ├── agents/               # 10+ specialist agents
-    ├── agent_docs/           # Progressive disclosure docs
-    ├── commands/             # Slash commands for workflows
-    ├── hooks/                # Quality gate automation
-    ├── steering/             # Project context templates
-    ├── workflows/            # Ralph Loop scripts
-    ├── prompts/              # Reusable prompts
-    ├── specs/                # Feature specifications
-    └── docs/                 # Framework documentation
+@plan-feature User Authentication
 ```
 
-## Key Features
+The orchestrator creates specs, waits for approval at each phase, then delegates to specialists.
 
-### 1. Minimal CLAUDE.md
-Following [HumanLayer best practices](https://www.humanlayer.dev/blog/writing-a-good-claude-md) - under 60 lines, universally applicable. Detailed docs loaded on-demand.
+### 🧵 Thread-Based Execution
+Five execution patterns for any workflow:
 
-### 2. Completion Protocol
-Agents use explicit completion signals per [Ralph Loop pattern](https://github.com/frankbria/ralph-claude-code):
-```
-<promise>DONE</promise>
-```
+| Thread | Pattern | Use Case |
+|--------|---------|----------|
+| **P-Thread** | Parallel | Multiple agents working simultaneously |
+| **C-Thread** | Chained | Sequential phases with checkpoints |
+| **F-Thread** | Fusion | Multiple perspectives, merged result |
+| **B-Thread** | Boss | Nested orchestration of threads |
+| **L-Thread** | Long-running | Extended autonomous work |
 
-### 3. Quality Gate Hooks
-Automatic validation before completion:
-- Lint check
-- Type check
-- Progress update reminder
+### 🌳 Git Worktree Isolation
+Each agent works in its own branch. No conflicts. Clean merges.
 
-### 4. Circuit Breaker
-Prevents infinite loops and API overuse:
 ```bash
-./ralph-kiro.sh --circuit-status
-./ralph-kiro.sh --reset-circuit
+.kiro/workflows/worktree-manager.sh create frontend-designer
+# Agent works in isolated branch
+.kiro/workflows/worktree-manager.sh merge frontend-designer
 ```
 
-### 5. Progressive Disclosure
-Context loaded only when needed:
-- `.kiro/agent_docs/testing.md` - Read when writing tests
-- `.kiro/agent_docs/security.md` - Read during security audit
-- `.kiro/agent_docs/database.md` - Read for schema work
+### 🧠 Self-Improving Agents
+Agents learn from corrections and improve over time.
 
-## Agents
+```bash
+# Capture a learning
+.kiro/workflows/self-improve.sh add correction "Use pnpm not npm"
+
+# Reflect on session
+@reflect
+```
+
+---
+
+## 🤖 Agents
 
 | Agent | Specialty |
 |-------|-----------|
-| `orchestrator` | Workflow coordination, SPEC phases |
-| `ralph-master` | Parallel orchestration (B-Thread) |
-| `code-surgeon` | Code review, refactoring |
-| `test-architect` | Testing, coverage |
-| `security-specialist` | OWASP audits |
-| `frontend-designer` | UI/UX, accessibility |
-| `db-wizard` | Schema, migrations |
-| `devops-automator` | CI/CD, deployment |
-| `doc-smith` | Documentation |
+| `orchestrator` | Workflow coordination, SPEC pattern, task delegation |
+| `ralph-master` | B-Thread meta-orchestration for complex workflows |
+| `code-surgeon` | Code review, refactoring, security analysis |
+| `test-architect` | Testing strategy, coverage, test generation |
+| `security-specialist` | OWASP audits, vulnerability detection |
+| `frontend-designer` | UI/UX, accessibility, responsive design |
+| `db-wizard` | Database design, migrations, optimization |
+| `devops-automator` | CI/CD, deployment, infrastructure |
+| `doc-smith` | Documentation, READMEs, API docs |
+| `agent-creator` | Create new custom agents |
 
-## Workflows
+---
 
-### Single Agent
-```bash
-kiro-cli --agent orchestrator
+## 🔄 Workflows
+
+### The Ralph Loop
+Agents work in autonomous cycles until task completion:
+
+```
+┌─────────────────────────────────────────┐
+│            RALPH LOOP                   │
+├─────────────────────────────────────────┤
+│  1. Load task from PLAN.md              │
+│  2. Execute with available tools        │
+│  3. Validate (tests, lint, typecheck)   │
+│  4. Update PROGRESS.md                  │
+│  5. Loop until done                     │
+│  6. Signal: <promise>DONE</promise>     │
+└─────────────────────────────────────────┘
 ```
 
-### Parallel Agents (P-Thread)
-```bash
-./.kiro/workflows/ralph-kiro.sh --parallel=5
-```
-
-### Specific Agents
-```bash
-./.kiro/workflows/ralph-kiro.sh --agents=code-surgeon,test-architect
-```
-
-## Slash Commands
+### Available Scripts
 
 ```bash
-/project:spec-workflow [feature]    # Full SPEC workflow
-/project:code-review [path]         # Code review
-/project:security-audit [scope]     # OWASP audit
-/project:test-coverage [target]     # Coverage analysis
+# Parallel execution with worktree isolation
+.kiro/workflows/ralph-kiro.sh --worktrees
+
+# Sequential phases with checkpoints
+.kiro/workflows/chain-workflow.sh
+
+# Multiple agents, fused results
+.kiro/workflows/fusion.sh
+
+# Real-time monitoring dashboard
+.kiro/workflows/dashboard.sh
 ```
 
-## Customization
+---
 
-### 1. Fill Steering Templates
+## 📁 Structure
+
+```
+.kiro/
+├── agents/           # 10 specialist agents
+├── prompts/          # Reusable prompts (@plan-feature, @reflect, etc.)
+├── workflows/        # Execution scripts (P/C/F/B/L threads)
+├── steering/         # Project context (product, tech, structure)
+├── hooks/            # Automation triggers
+├── specs/            # Feature specifications
+└── docs/             # Extended documentation
+
+CLAUDE.md             # Core rules for all agents
+LEARNINGS.md          # Captured corrections and patterns
+PLAN.md               # Current task checklist
+PROGRESS.md           # Real-time status tracking
+```
+
+---
+
+## 🧠 Self-Improvement
+
+The template includes a self-improvement system based on the principle: **"Correct once, never again."**
+
+### How It Works
+
+1. **Capture** - When you correct an agent, it's logged to `LEARNINGS.md`
+2. **Reflect** - Use `@reflect` at session end to analyze what worked
+3. **Promote** - High-frequency learnings get added to `CLAUDE.md`
+4. **Evolve** - Agents improve with each session
+
+### Learning Types
+
+```markdown
+CORRECTION: "Use pnpm not npm"
+PREFER: "Always use TypeScript strict mode"
+PATTERN: "Run lint before commit"
+AVOID: "Don't use any types"
+```
+
+---
+
+## 🛠️ Customization
+
+### Add Your Project Context
+
+Edit the steering files:
+
 ```bash
-# Edit these with your project details
-.kiro/steering/product.md    # What you're building
-.kiro/steering/tech.md       # Tech stack
-.kiro/steering/structure.md  # Project layout
+.kiro/steering/product.md   # What you're building
+.kiro/steering/tech.md      # Your tech stack
+.kiro/steering/structure.md # Your file organization
 ```
 
-### 2. Define Tasks
-Edit `PLAN.md` with your task breakdown.
+### Create Custom Agents
 
-### 3. Add Project-Specific Docs
-Add to `.kiro/agent_docs/` for progressive disclosure.
+```bash
+kiro-cli --agent agent-creator
+```
 
-## Architecture
+Or copy `.kiro/agents/templates/specialist-base.json` and customize.
 
-Based on Thread-Based Engineering:
+### Add Prompts
 
-| Thread | Description | Implementation |
-|--------|-------------|----------------|
-| Base | Single agent, manual review | `kiro-cli --agent X` |
-| P-Thread | Parallel agents | `ralph-kiro.sh` |
-| C-Thread | Chained phases | `chain-workflow.sh` |
-| F-Thread | Fused results | `fusion.sh` |
-| B-Thread | Nested orchestration | `ralph-master` agent |
+Create `.kiro/prompts/my-prompt.md`:
 
-## Best Practices Implemented
+```markdown
+# My Custom Prompt
 
-- ✅ Minimal CLAUDE.md (<60 lines)
-- ✅ Progressive disclosure for detailed docs
-- ✅ Explicit completion signals
-- ✅ Quality gate hooks
-- ✅ Circuit breaker protection
-- ✅ Trimmed agent prompts (<300 words)
-- ✅ Self-evolution protocol (RBT)
+When invoked, ask: What specific task should I help with?
 
-## References
+Then do the thing...
+```
 
-- [Anthropic Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
-- [Writing a Good CLAUDE.md](https://www.humanlayer.dev/blog/writing-a-good-claude-md)
-- [Ralph Loop Implementation](https://github.com/frankbria/ralph-claude-code)
-- [Claude-Flow Orchestration](https://github.com/ruvnet/claude-code-flow)
+Use with `@my-prompt`
 
-## License
+---
 
-MIT
+## 📚 Documentation
+
+- [Setup Guide](.kiro/docs/setup-guide.md)
+- [Thread Engineering Guide](.kiro/docs/thread-engineering-guide.md)
+- [Kiro CLI Reference](.kiro/docs/kiro-cli-reference.md)
+- [Agent Documentation](.kiro/agents/README.md)
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create a feature branch
+3. Make your changes
+4. Submit a PR
+
+---
+
+## 📄 License
+
+MIT © [RaapTech LLC](https://github.com/RaapTechllc)
+
+---
+
+<p align="center">
+  <strong>Built for developers who want AI agents that actually work together.</strong>
+</p>
+
+<p align="center">
+  <a href="https://kiro.dev">Kiro</a> •
+  <a href="https://github.com/RaapTechllc/Kiro-Orchestrator-Template/issues">Issues</a> •
+  <a href="https://github.com/RaapTechllc/Kiro-Orchestrator-Template/discussions">Discussions</a>
+</p>
