@@ -1,0 +1,43 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+activity.log
+
+# Runtime state (generated during execution)
+.kiro/thread-state/
+.kiro/worktrees/
+
+# User-specific settings (not part of template)
+.kiro/settings/mcp.json
+
+# Node (if project uses it)
+node_modules/
+.npm/
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs (project-specific)
+dist/
+build/
+out/
+.next/
+
+# Test coverage (generated)
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
