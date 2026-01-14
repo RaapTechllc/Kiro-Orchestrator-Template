@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://kiro.dev/logo.svg" alt="Kiro Logo" width="120" height="120">
+  <img src="https://kiro.dev/images/kiro-wordmark.png" alt="Kiro" width="200">
 </p>
 
-<h1 align="center">🎭 Kiro Orchestrator Template</h1>
+<h1 align="center">🎭 Orchestrator Template</h1>
 
 <p align="center">
   <strong>Production-ready multi-agent orchestration for Kiro CLI</strong>
