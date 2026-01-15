@@ -1,14 +1,37 @@
 # Plan Feature
 
-Start the spec-driven development workflow for a new feature.
+Intelligent planning that adapts to your input.
 
-## Trigger Words
-- "plan [feature]"
-- "new feature [description]"  
-- "PRD for [feature]"
-- "spec [feature]"
+## Routing Logic
 
-## Workflow
+Analyze the user's request:
+
+**Route to Interactive PRD (@ralph-prd) when:**
+- Request is vague or high-level ("build a login system")
+- Missing key details (no success criteria, no scope boundaries)
+- User explicitly asks for "thorough" or "detailed" planning
+- Complex feature spanning multiple components
+
+**Route to Quick Plan (@create-plan) when:**
+- User says "quick" or "fast"
+- Comprehensive context already provided
+- Simple, well-defined task
+- User provides explicit requirements list
+
+## Default Behavior
+
+If uncertain, ask: "Would you like a quick plan from what you've provided, or should we go through the interactive PRD process to ensure nothing is missed?"
+
+## Integration with Execution
+
+After planning completes:
+1. Plan is saved to appropriate location
+2. Offer to begin execution with `@execute`
+3. Or create worktree for parallel execution with `@create-shard`
+
+---
+
+## Full SPEC Workflow (when using @ralph-prd)
 
 ### Phase 1: Requirements
 Create `.kiro/specs/[feature-name]/requirements.md` with:
@@ -30,9 +53,6 @@ Create `.kiro/specs/[feature-name]/requirements.md` with:
 - WHEN [trigger], THE SYSTEM SHALL [response]
 - IF [condition], THEN [behavior]
 - THE SYSTEM SHALL [capability] WITHIN [constraint]
-
-### US-2: [Story Title]
-...
 
 ## Functional Requirements
 - FR-1: [Requirement]
@@ -65,10 +85,3 @@ Wait for explicit approval before each phase transition:
 - "requirements approved" → Design
 - "design approved" → Tasks  
 - "start task 1" → Implementation
-
-## Context Management
-
-- Start each phase with minimal context
-- Reference files instead of pasting content
-- Summarize completed phases
-- Load only task-specific files during implementation
