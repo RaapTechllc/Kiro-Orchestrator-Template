@@ -14,6 +14,14 @@ Orchestrator template for multi-agent AI development workflows. Drop `.kiro/` in
 # Start orchestrator
 kiro-cli --agent orchestrator
 
+# PRD → Plan → Implement workflow (RECOMMENDED)
+@create-prd "feature description"     # Creates PRD with phases
+@create-plan .kiro/specs/prds/X.prd.md  # Creates plan for next phase
+@implement-plan .kiro/specs/plans/X.plan.md  # Executes with validation
+
+# Ralph Loop v2 (with stop hook + validation)
+./.kiro/workflows/ralph-loop-v2.sh --task "description" --max-iterations 20
+
 # Run parallel agents (with worktree isolation)
 ./.kiro/workflows/ralph-kiro.sh --worktrees --auto-merge
 
@@ -26,9 +34,11 @@ kiro-cli --agent orchestrator
 ```
 
 ## Critical Files
-- `PLAN.md` - Task checklist (create per-project)
-- `PROGRESS.md` - Real-time status (create per-project)
-- `.kiro/steering/` - Project context (fill in templates)
+- `.kiro/specs/prds/` - Product requirement documents
+- `.kiro/specs/plans/` - Implementation plans (completed/ for archives)
+- `.kiro/state/ralph-state.json` - Loop state tracking
+- `PROGRESS.md` - Real-time status
+- `.kiro/steering/` - Project context
 
 ## Completion Protocol
 Agents MUST output when done:
@@ -36,11 +46,23 @@ Agents MUST output when done:
 <promise>DONE</promise>
 ```
 
-## Quality Gates
-Before completing, verify:
-1. `npm run lint` passes (if applicable)
-2. `npm run typecheck` passes (if applicable)
-3. All acceptance criteria met
+**IMPORTANT:** The stop hook validates this claim. Saying DONE without passing validation will continue the loop.
+
+## Validation Gates (Enforced by Stop Hook)
+Before `<promise>DONE</promise>` is accepted:
+
+```bash
+# Level 1: Syntax (REQUIRED)
+npm run lint && npm run typecheck
+
+# Level 2: Unit Tests (REQUIRED)
+npm run test:unit
+
+# Level 3: Integration (optional, final check)
+npm run test:integration
+```
+
+See `.kiro/validation/levels.yaml` for multi-language config.
 
 ## Git Workflow
 - Parallel agents work in isolated worktrees (branches)
