@@ -1,38 +1,27 @@
 # Code Review
 
-Review recent code changes for quality, security, and maintainability.
+Routes to appropriate review method based on scope.
 
-## Review Focus
+## Routing
 
-1. **Code Quality**
-   - Readable and well-named variables/functions
-   - No duplicated logic
-   - Appropriate abstraction level
+**Use Swarm Review (@code-review-swarm) when:**
+- Reviewing a PR
+- Reviewing a feature branch
+- Changes span multiple files
+- User requests "thorough" or "comprehensive" review
 
-2. **Error Handling**
-   - Proper try/catch blocks
-   - Meaningful error messages
-   - Graceful degradation
+**Use Quick Review (inline) when:**
+- Single file change
+- User requests "quick" review
+- Hotfix or small patch
 
-3. **Type Safety**
-   - No `any` types without justification
-   - Proper null/undefined handling
-   - Correct type assertions
+## Quick Review Process
 
-4. **Performance**
-   - No unnecessary re-renders
-   - Efficient data fetching
-   - Proper memoization
+For small changes, review inline without spawning subagents:
+1. Get the diff
+2. Check for obvious issues across all categories
+3. Provide brief feedback
 
-5. **Security**
-   - Input validation
-   - No exposed secrets
-   - Safe data handling
+## Default
 
-## Workflow
-
-1. Run `git diff` to see recent changes
-2. Focus on modified files only
-3. Prioritize findings: Critical → Warnings → Suggestions
-
-Provide actionable feedback with specific code suggestions.
+Default to swarm review for anything more than 50 lines changed.
