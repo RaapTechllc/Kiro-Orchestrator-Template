@@ -15,5 +15,13 @@
     "write": {
       "allowedPaths": ["./PROGRESS.md", "./activity.log", "./.kiro/thread-state/**"]
     }
+  },
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "bash .kiro/scripts/inject-worktree-context.sh 2>/dev/null || bash .kiro/scripts/inject-context.sh 2>/dev/null || echo 'Running without context injection'",
+        "timeout_ms": 8000
+      }
+    ]
   }
 }

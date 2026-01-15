@@ -5,5 +5,13 @@
   "model": "auto",
   "tools": ["read", "glob", "grep", "shell"],
   "allowedTools": ["read", "glob", "grep", "shell:npm", "shell:npx"],
-  "resources": ["file://CLAUDE.md", "file://PROGRESS.md"]
+  "resources": ["file://CLAUDE.md", "file://PROGRESS.md"],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "bash .kiro/scripts/inject-context.sh 2>/dev/null || echo 'Context script not found - running from project root recommended'",
+        "timeout_ms": 5000
+      }
+    ]
+  }
 }

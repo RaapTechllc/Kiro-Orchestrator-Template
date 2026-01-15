@@ -13,5 +13,13 @@
     "write": {
       "allowedPaths": ["./docs/**", "./README.md", "./CHANGELOG.md", "./CONTRIBUTING.md"]
     }
+  },
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "bash .kiro/scripts/inject-context.sh 2>/dev/null || echo 'Context script not found - running from project root recommended'",
+        "timeout_ms": 5000
+      }
+    ]
   }
 }
