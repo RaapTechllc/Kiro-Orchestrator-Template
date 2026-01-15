@@ -24,8 +24,14 @@
   "hooks": {
     "agentSpawn": [
       {
-        "command": "bash .kiro/scripts/inject-context.sh 2>/dev/null || echo 'Context script not found - running from project root recommended'",
+        "command": "bash .kiro/scripts/inject-context.sh 2>/dev/null || echo 'Context script not found'",
         "timeout_ms": 5000
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash .kiro/scripts/validate-changes.sh 2>/dev/null || true",
+        "timeout_ms": 120000
       }
     ]
   }
