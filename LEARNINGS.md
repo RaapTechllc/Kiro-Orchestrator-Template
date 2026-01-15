@@ -10,7 +10,7 @@ This file is automatically updated by the self-improvement system.
 ## Corrections
 
 <!-- Format: - [DATE] CORRECTION: "original mistake" → "correct approach" -->
-<!-- Example: - [2026-01-14] CORRECTION: Used npm → Use pnpm for this project -->
+- [2026-01-14] CORRECTION: Long responses timeout → Split work into smaller commits
 
 ## Preferences
 
