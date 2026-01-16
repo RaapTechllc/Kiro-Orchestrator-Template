@@ -4,5 +4,88 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		// Editor
+		"editor.formatOnSave": true,
+		"editor.tabSize": 2,
+		"editor.insertSpaces": true,
+		"editor.trimAutoWhitespace": true,
+		"files.trimTrailingWhitespace": true,
+		"files.insertFinalNewline": true,
+
+		// Shell scripts
+		"[shellscript]": {
+			"editor.tabSize": 2,
+			"editor.defaultFormatter": "foxundermoon.shell-format"
+		},
+
+		// Markdown
+		"[markdown]": {
+			"editor.wordWrap": "on",
+			"editor.quickSuggestions": false
+		},
+
+		// JSON
+		"[json]": {
+			"editor.defaultFormatter": "vscode.json-language-features"
+		},
+		"[jsonc]": {
+			"editor.defaultFormatter": "vscode.json-language-features"
+		},
+
+		// File associations
+		"files.associations": {
+			"*.kiro.hook": "json",
+			"*.md": "markdown"
+		},
+
+		// Exclude from explorer (reduce noise)
+		"files.exclude": {
+			"**/.git": true,
+			"**/node_modules": true,
+			"**/.DS_Store": true
+		},
+
+		// Search exclusions
+		"search.exclude": {
+			"**/node_modules": true,
+			"**/.git": true,
+			"**/activity.log": true
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"foxundermoon.shell-format",
+			"timonwong.shellcheck",
+			"redhat.vscode-yaml",
+			"yzhang.markdown-all-in-one"
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Dashboard",
+				"type": "shell",
+				"command": "./.kiro/workflows/dashboard.sh",
+				"problemMatcher": [],
+				"presentation": {
+					"reveal": "always",
+					"panel": "new"
+				}
+			},
+			{
+				"label": "Health Check",
+				"type": "shell",
+				"command": "./.kiro/workflows/health-monitor.sh check",
+				"problemMatcher": []
+			},
+			{
+				"label": "List Sessions",
+				"type": "shell",
+				"command": "./.kiro/workflows/session-manager.sh list",
+				"problemMatcher": []
+			}
+		]
+	}
 }
