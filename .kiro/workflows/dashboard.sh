@@ -34,31 +34,39 @@ show_worktree_status() {
 }
 
 show_agent_status() {
-  echo "🤖 AGENT STATUS"
+  echo "🏥 AGENT HEALTH"
   echo "────────────────────────────────────────────────────────────────────"
+  
+  # Run health check first
+  ./.kiro/workflows/health-monitor.sh check 2>/dev/null
+  
+  local idx=1
+  AGENT_LIST=()
   
   if [ -d "agents" ]; then
     for agent_dir in agents/*/; do
       if [ -d "$agent_dir" ]; then
         local agent=$(basename "$agent_dir")
-        local output_file="$agent_dir/output.log"
-        local status="⏳ Running"
+        AGENT_LIST+=("$agent")
+        local health_file=".kiro/state/health/$agent.json"
+        local status="⏳" status_text="unknown" age=0 iter=0
         
-        if [ -f "$output_file" ]; then
-          if grep -q "<promise>DONE</promise>" "$output_file" 2>/dev/null; then
-            status="✅ Complete"
-          elif grep -q "ERROR\|FAILED" "$output_file" 2>/dev/null; then
-            status="❌ Error"
-          fi
-          
-          local last_line=$(tail -1 "$output_file" 2>/dev/null | cut -c1-50)
-          local mod_time=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null)
-          local now=$(date +%s)
-          local age=$(( (now - mod_time) / 60 ))
-          
-          printf "   %-20s %s (last update: %dm ago)\n" "$agent" "$status" "$age"
-          [ -n "$last_line" ] && echo "      └─ $last_line..."
+        if [ -f "$health_file" ]; then
+          status_text=$(grep -o '"status":"[^"]*"' "$health_file" | cut -d'"' -f4)
+          age=$(grep -o '"stall_minutes":[0-9]*' "$health_file" | cut -d: -f2)
+          iter=$(grep -o '"iterations":[0-9]*' "$health_file" | cut -d: -f2)
         fi
+        
+        case $status_text in
+          healthy)  status="🟢" ;;
+          stalled)  status="🟡" ;;
+          crashed)  status="🔴" ;;
+          complete) status="✅" ;;
+          failed)   status="❌" ;;
+        esac
+        
+        printf "  [%d] %s %-18s %-10s iter:%-3s last:%dm ago\n" "$idx" "$status" "$agent" "$status_text" "$iter" "$age"
+        ((idx++))
       fi
     done
   else

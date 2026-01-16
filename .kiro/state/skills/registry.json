@@ -1,0 +1,58 @@
+{
+  "agents": {
+    "code-surgeon": {
+      "skills": ["refactoring", "debugging", "code-review", "typescript", "python", "rust"],
+      "avoid": ["deployment", "infrastructure"],
+      "max_parallel": 3
+    },
+    "test-architect": {
+      "skills": ["unit-testing", "integration-testing", "e2e-testing", "coverage", "mocking"],
+      "avoid": ["ui-design"],
+      "max_parallel": 2
+    },
+    "security-specialist": {
+      "skills": ["security-audit", "vulnerability-scan", "auth", "encryption", "compliance"],
+      "avoid": ["frontend"],
+      "max_parallel": 2
+    },
+    "doc-smith": {
+      "skills": ["documentation", "api-docs", "readme", "tutorials", "changelog"],
+      "avoid": ["implementation"],
+      "max_parallel": 3
+    },
+    "frontend-designer": {
+      "skills": ["react", "css", "accessibility", "ui-components", "responsive"],
+      "avoid": ["backend", "database"],
+      "max_parallel": 2
+    },
+    "db-wizard": {
+      "skills": ["sql", "migrations", "schema-design", "optimization", "postgres", "mongodb"],
+      "avoid": ["frontend"],
+      "max_parallel": 2
+    },
+    "devops-automator": {
+      "skills": ["ci-cd", "docker", "kubernetes", "terraform", "monitoring", "deployment"],
+      "avoid": ["business-logic"],
+      "max_parallel": 2
+    },
+    "strands-agent": {
+      "skills": ["context-efficiency", "code-cleanup", "deletion-review", "simplification", "loc-analysis"],
+      "avoid": ["implementation", "writing-code"],
+      "max_parallel": 1
+    }
+  },
+  "skill_index": {
+    "typescript": ["code-surgeon", "frontend-designer"],
+    "python": ["code-surgeon"],
+    "testing": ["test-architect"],
+    "security": ["security-specialist"],
+    "documentation": ["doc-smith"],
+    "frontend": ["frontend-designer"],
+    "database": ["db-wizard"],
+    "deployment": ["devops-automator"],
+    "refactoring": ["code-surgeon"],
+    "api": ["code-surgeon", "doc-smith"],
+    "cleanup": ["strands-agent"],
+    "code-review": ["code-surgeon", "strands-agent"]
+  }
+}

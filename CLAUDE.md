@@ -28,6 +28,15 @@ kiro-cli --agent orchestrator
 # Monitor agents
 ./.kiro/workflows/dashboard.sh
 
+# Health monitoring
+./.kiro/workflows/health-monitor.sh check    # Check all agents
+./.kiro/workflows/health-monitor.sh watch 30 # Continuous monitoring
+
+# Session tracking
+./.kiro/workflows/session-manager.sh start <agent> "task"
+./.kiro/workflows/session-manager.sh list
+./.kiro/workflows/session-manager.sh end <agent> complete
+
 # Manage worktrees
 ./.kiro/workflows/worktree-manager.sh status
 ./.kiro/workflows/worktree-manager.sh merge <agent>
