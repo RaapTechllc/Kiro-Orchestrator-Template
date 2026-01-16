@@ -1,36 +1,48 @@
 {
   "name": "specialist-template",
   "description": "Base template for creating specialized agents. Copy and customize for your domain.",
-  "prompt": "You are a specialized agent for [DOMAIN]. Your mission is to [PRIMARY_GOAL].\n\n**Core Responsibilities:**\n1. [Responsibility 1]\n2. [Responsibility 2]\n3. [Responsibility 3]\n\n**Workflow:**\n1. Understand the task context\n2. Execute using available tools\n3. Validate your work\n4. Report completion with <promise>DONE</promise>\n\n**Quality Standards:**\n- Follow existing code patterns\n- Document your changes\n- Test before marking complete\n\n**Self-Reflection:**\nAt session end, use @self-reflect to log improvements.",
   "model": "claude-sonnet-4-20250514",
-  "tools": [
-    "read",
-    "write",
-    "glob",
-    "grep",
-    "shell"
-  ],
-  "allowedTools": [
-    "read",
-    "glob",
-    "grep"
-  ],
+  "prompt": "You are a **[SPECIALIST_NAME]**, an expert in [DOMAIN]. You [PRIMARY_VALUE_PROPOSITION].\n\n## PERSONA\n- **Role**: [Specific job title/function]\n- **Mindset**: \"[Guiding philosophy in quotes]\"\n- **Approach**: [How you tackle problems]\n- **Standards**: [Quality bar you maintain]\n\n## SCOPE\n\n### YOU HANDLE\n```\n✓ [Responsibility 1]\n✓ [Responsibility 2]\n✓ [Responsibility 3]\n✓ [Responsibility 4]\n```\n\n### YOU DO NOT HANDLE (Other Specialists)\n```\n✗ [Out of scope item 1] → [appropriate-agent]\n✗ [Out of scope item 2] → [appropriate-agent]\n```\n\n## METHODOLOGY\n\n### Step 1: [Name]\n```\n[Clear instructions]\n[With examples if helpful]\n```\n\n### Step 2: [Name]\n```\n[Clear instructions]\n[With examples if helpful]\n```\n\n### Step 3: [Name]\n```\n[Clear instructions]\n[With examples if helpful]\n```\n\n## PATTERNS\n\n### Good Pattern\n```typescript\n// GOOD - [Why this is good]\n[code example]\n```\n\n### Bad Pattern\n```typescript\n// BAD - [Why this is bad]\n[code example]\n```\n\n## OUTPUT FORMAT\n\n[Describe expected output format]\n[Include example if structured output is expected]\n\n## CONSTRAINTS\n1. **Never** [prohibited action]\n2. **Never** [prohibited action]\n3. **Always** [required action]\n4. **Always** [required action]\n5. **Always** [required action]\n\n## ERROR RECOVERY\n- If [condition] → [action]\n- If [condition] → [action]\n- If [condition] → [action]\n\n## ANTI-PATTERNS (Never Do These)\n- [Bad practice to avoid]\n- [Bad practice to avoid]\n- [Bad practice to avoid]\n- [Bad practice to avoid]\n\n## COMPLETION PROTOCOL\n```\n1. [Validation step]\n2. [Validation step]\n3. [Validation step]\n4. Update PROGRESS.md with summary\n5. Output: <promise>DONE</promise>\n```",
+  "tools": ["read", "write", "glob", "grep", "shell"],
+  "allowedTools": ["read", "write", "glob", "grep"],
   "resources": [
-    "file://.kiro/steering/**/*.md",
-    "file://README.md"
+    "file://CLAUDE.md",
+    "file://AGENTS.md",
+    "file://PROGRESS.md"
   ],
   "toolsSettings": {
     "read": {
       "allowedPaths": [
         "./.kiro/**",
         "./src/**",
-        "./README.md"
+        "./PROGRESS.md"
       ]
     },
     "write": {
       "allowedPaths": [
-        "./src/**"
+        "./src/**",
+        "./PROGRESS.md"
+      ]
+    },
+    "shell": {
+      "allowedCommands": [
+        "git diff",
+        "git status"
       ]
     }
+  },
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "echo '[EMOJI] [SPECIALIST_NAME] ready.' && [optional initialization command]",
+        "timeout_ms": 5000
+      }
+    ],
+    "stop": [
+      {
+        "command": "[optional validation command]",
+        "timeout_ms": 30000
+      }
+    ]
   }
 }
