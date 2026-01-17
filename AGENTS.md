@@ -79,10 +79,11 @@ If blocked for >5 minutes on:
 
 | Task Type | Model | Rationale |
 |-----------|-------|-----------|
-| Complex reasoning, security audits | claude-opus-4-5-20251101 | Highest capability |
-| Code generation, reviews | claude-sonnet-4-20250514 | Balanced speed/quality |
-| Simple tasks, formatting | claude-haiku-4-5-20250514 | Fast, cost-effective |
-| Orchestration, planning | claude-sonnet-4-20250514 | Good reasoning speed |
+| All core agents | claude-opus-4-5-20251101 | Maximum capability for quality output |
+| Style/formatting tasks | claude-haiku-4-5-20250514 | Fast, cost-effective for simple checks |
+| Documentation generation | claude-haiku-4-5-20250514 | Sufficient for prose generation |
+
+**Current Strategy**: Opus 4.5 is the default for all agents requiring reasoning, code generation, security analysis, planning, and orchestration. Haiku is reserved only for simple formatting and documentation tasks where speed matters more than deep reasoning.
 
 ## Completion Criteria
 
