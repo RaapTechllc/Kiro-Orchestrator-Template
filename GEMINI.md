@@ -1,6 +1,8 @@
-# Orchestrator Template
+# Orchestrator Template - Gemini Instructions
 
 Multi-agent AI development workflows. Drop `.kiro/` into any project.
+
+> **Note**: This file mirrors CLAUDE.md for Gemini model compatibility. Both files should be kept in sync.
 
 ## Commands
 ```bash
@@ -12,21 +14,8 @@ Multi-agent AI development workflows. Drop `.kiro/` into any project.
 # Ralph Loop (autonomous iteration)
 ./.kiro/workflows/ralph-loop-v2.sh --task "description" --max-iterations 20
 
-# Dual-Agent Verification (writer + reviewer)
-./.kiro/workflows/dual-verify.sh --task "description" --strict
-
 # Parallel agents (worktree isolation)
 ./.kiro/workflows/ralph-kiro.sh --worktrees --auto-merge
-
-# Worktree rollback (undo failed merges)
-./.kiro/workflows/worktree-manager.sh rollback       # Undo last merge
-./.kiro/workflows/worktree-manager.sh rollback-list  # View merge history
-
-# Memory Bank (session persistence)
-./.kiro/workflows/memory-bank.sh save active "Working on X"
-./.kiro/workflows/memory-bank.sh save progress "Completed Y"
-./.kiro/workflows/memory-bank.sh handoff   # Generate session handoff
-./.kiro/workflows/memory-bank.sh load      # Load context
 
 # Monitoring
 ./.kiro/workflows/dashboard.sh              # All agents
@@ -34,13 +23,14 @@ Multi-agent AI development workflows. Drop `.kiro/` into any project.
 ```
 
 ## Critical Rules
-**YOU MUST:**
+
+**MANDATORY:**
 - Execute ONE task at a time
 - STOP and wait for approval between phases
 - Validate before merge: `worktree-manager.sh validate <agent>`
 - Output `<promise>DONE</promise>` ONLY when validation passes
 
-**IMPORTANT:** The stop hook validates completion claims. Saying DONE without passing lint/typecheck/tests continues the loop.
+**CRITICAL:** The stop hook validates completion claims. Saying DONE without passing lint/typecheck/tests continues the loop.
 
 ## Validation Gates
 ```bash
@@ -58,14 +48,12 @@ npm run test:integration            # Level 3: Optional
 | `LEARNINGS.md` | Corrections and patterns |
 | `.kiro/specs/` | PRDs and plans |
 | `.kiro/steering/` | Deep context (load on-demand) |
-| `.kiro/memory/` | Session persistence (Memory Bank) |
 
 ## Agent Delegation
 | Task Type | Agent |
 |-----------|-------|
 | Planning/Orchestration | `orchestrator` |
 | Code review/Refactoring | `code-surgeon` |
-| Implementation verification | `verifier` |
 | Tests | `test-architect` |
 | CI/CD | `devops-automator` |
 | Schema/DB | `db-wizard` |
@@ -75,17 +63,49 @@ npm run test:integration            # Level 3: Optional
 | Context efficiency | `strands-agent` |
 
 ## Efficiency Directive
-**Golden Rule: 1 MESSAGE = ALL RELATED OPERATIONS**
+
+**Primary Rule: 1 MESSAGE = ALL RELATED OPERATIONS**
 - Batch tool calls when independent
 - Never make a tool call without a clear purpose
 - Prefer reading existing code before writing new
+
+## Gemini-Specific Guidelines
+
+### Tool Usage
+When using function calling:
+- Provide all required parameters explicitly
+- Use structured JSON for complex inputs
+- Handle tool errors gracefully with retry logic
+
+### Context Management
+- Gemini has a 1M+ token context window
+- Still prefer progressive disclosure over loading everything
+- Reference files by path rather than including full content
+
+### Code Generation
+- Be explicit about language and framework versions
+- Include type annotations for TypeScript/Python
+- Follow existing patterns in the codebase
+
+### Output Format
+- Use markdown for structured responses
+- Code blocks with language tags: ```typescript, ```python, etc.
+- Tables for comparing options or listing items
 
 ## Self-Improvement
 When corrected: `./.kiro/workflows/self-improve.sh add correction "description"`
 At session end: `@reflect`
 
 ## Deep Docs (load on-demand)
-- `.kiro/docs/thread-selection-guide.md` - **Choose the right thread type**
 - `.kiro/docs/thread-engineering-guide.md` - Full framework
 - `.kiro/steering/ralph-loop.md` - Autonomous iteration
 - `.kiro/steering/agent-evolution.md` - Self-improvement
+
+## Model Selection
+
+This template is designed for:
+- **Primary**: Gemini 2.0 Pro / Flash for general tasks
+- **Complex reasoning**: Gemini 2.0 Pro with thinking
+- **Fast iteration**: Gemini 2.0 Flash
+
+Adjust agent configurations in `.kiro/agents/*.json` to use Gemini model IDs when running outside Claude Code.
