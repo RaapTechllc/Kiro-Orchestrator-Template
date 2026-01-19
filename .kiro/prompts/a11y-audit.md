@@ -5,7 +5,7 @@ Perform a comprehensive WCAG 2.1 AA accessibility audit of the page or component
 ## Process
 
 1. **Capture accessibility tree**
-   - Use Playwright accessibility snapshot
+   - Use agent-browser snapshot
    - Identify all interactive elements and their roles
 
 2. **Semantic HTML check**

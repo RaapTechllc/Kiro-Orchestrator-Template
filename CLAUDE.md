@@ -22,6 +22,12 @@ Multi-agent AI development workflows. Drop `.kiro/` into any project.
 ./.kiro/workflows/worktree-manager.sh rollback       # Undo last merge
 ./.kiro/workflows/worktree-manager.sh rollback-list  # View merge history
 
+# Browser automation (agent-browser)
+agent-browser open https://example.com              # Navigate
+agent-browser snapshot --json                       # Get page structure
+agent-browser click "ref:123"                       # Interact using refs
+agent-browser screenshot --full                     # Capture screenshot
+
 # Memory Bank (session persistence)
 ./.kiro/workflows/memory-bank.sh save active "Working on X"
 ./.kiro/workflows/memory-bank.sh save progress "Completed Y"
@@ -87,5 +93,6 @@ At session end: `@reflect`
 ## Deep Docs (load on-demand)
 - `.kiro/docs/thread-selection-guide.md` - **Choose the right thread type**
 - `.kiro/docs/thread-engineering-guide.md` - Full framework
+- `.kiro/docs/agent-browser-guide.md` - **Browser automation with agent-browser**
 - `.kiro/steering/ralph-loop.md` - Autonomous iteration
 - `.kiro/steering/agent-evolution.md` - Self-improvement

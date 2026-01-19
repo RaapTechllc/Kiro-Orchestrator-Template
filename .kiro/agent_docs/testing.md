@@ -15,7 +15,8 @@
 
 ### E2E Tests
 - Test critical user journeys
-- Run in browser with Playwright
+- Run in browser with agent-browser
+- Snapshot-based element selection
 - Location: `tests/e2e/`
 
 ## Running Tests

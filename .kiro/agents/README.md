@@ -84,7 +84,7 @@ kiro-cli --agent test-architect
 
 **Specialties:**
 - Unit tests (Jest, Vitest)
-- E2E tests (Playwright)
+- E2E tests (agent-browser)
 - Test data generation
 - Coverage analysis
 
@@ -152,7 +152,7 @@ kiro-cli --agent frontend-designer
 - Tailwind CSS / shadcn/ui
 - Accessibility (WCAG 2.1 AA)
 - Responsive design
-- Visual testing with Playwright
+- Visual testing with agent-browser
 
 **Use with:** `@ui-review`, `@a11y-audit`, `@responsive-check`
 

@@ -32,6 +32,9 @@ a
 git clone https://github.com/RaapTechllc/Kiro-Orchestrator-Template.git my-project
 cd my-project
 
+# Install agent-browser for E2E testing (optional)
+npm install -g agent-browser
+
 # Start the orchestrator
 kiro-cli --agent orchestrator
 ```

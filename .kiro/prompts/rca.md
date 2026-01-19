@@ -18,13 +18,13 @@ Then propose the smallest safe fix that keeps the demo path stable.
 - Issue description (from user or issue tracker)
 - Relevant plan file (if any)
 - `DEVLOG.md` entries around the break
-- failing tests (Playwright or unit)
+- failing tests (E2E or unit)
 
 ## Process
 
 ### 1) Reproduce
 Write the exact reproduction steps.
-If possible, encode them as a Playwright spec.
+If possible, encode them as an E2E test.
 
 ### 2) Observe
 Collect evidence:

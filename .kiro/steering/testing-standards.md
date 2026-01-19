@@ -128,24 +128,26 @@ describe('POST /api/users', () => {
 3. Payment/checkout flow
 4. Error recovery scenarios
 
-### Page Object Pattern
-```typescript
-class LoginPage {
-  async navigate() {
-    await page.goto('/login');
-  }
+### Snapshot-Based Testing with agent-browser
+```bash
+# Navigate and capture page structure
+agent-browser open https://app.example.com
+agent-browser snapshot --json > page-structure.json
 
-  async login(email: string, password: string) {
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"]', password);
-    await page.click('[data-testid="submit"]');
-  }
+# Interact using refs from snapshot
+agent-browser click "ref:123"
+agent-browser fill "input[name='email']" "test@example.com"
 
-  async expectError(message: string) {
-    await expect(page.locator('.error')).toContainText(message);
-  }
-}
+# Verify results
+agent-browser snapshot --json | jq '.elements[] | select(.role=="alert")'
 ```
+
+### Best Practices
+- Use semantic locators when possible
+- Prefer refs from snapshots for deterministic selection
+- Test keyboard navigation flows
+- Verify ARIA announcements
+- Check focus management
 
 ## Mocking Guidelines
 

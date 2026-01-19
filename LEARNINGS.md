@@ -1,32 +1,44 @@
-# Project Learnings
+# Learnings & Corrections
 
-Corrections, preferences, and patterns discovered during development.
-This file is automatically updated by the self-improvement system.
+Captured patterns, corrections, and preferences for continuous improvement.
 
-**Principle: Correct once, never again.**
+## Browser Automation (2026-01-19)
 
----
+**PATTERN:** Snapshot-first workflow with agent-browser
+- Always snapshot before interacting: `agent-browser snapshot --json`
+- Use refs from snapshots for stable element selection: `agent-browser click "ref:123"`
+- JSON mode for all AI agent workflows: `agent-browser --json snapshot`
+- Sessions for parallel test isolation: `agent-browser --session test1`
 
-## Corrections
+**PREFER:** Use refs over CSS selectors for stability
+- Refs are deterministic and stable across page changes
+- Better for AI agents than fragile CSS selectors
 
-<!-- Format: - [DATE] CORRECTION: "original mistake" → "correct approach" -->
-- [2026-01-14] CORRECTION: Long responses timeout → Split work into smaller commits
-
-## Preferences
-
-<!-- Format: - [DATE] PREFER: description of preferred approach -->
-<!-- Example: - [2026-01-14] PREFER: Always use TypeScript strict mode -->
-
-## Patterns
-
-<!-- Format: - [DATE] PATTERN: reusable workflow or command discovered -->
-<!-- Example: - [2026-01-14] PATTERN: Run lint before commit -->
-
-## Anti-Patterns
-
-<!-- Format: - [DATE] AVOID: thing that caused problems and why -->
-<!-- Example: - [2026-01-14] AVOID: Using any types - causes runtime errors -->
+**AVOID:** Guessing CSS selectors
+- Always snapshot first to get current page state
+- Use refs from snapshots instead of constructing selectors
 
 ---
 
-*Last updated: Not yet*
+## Template for Future Learnings
+
+### CORRECTION: [What was wrong]
+**Why:** [Explanation]
+**Fix:** [What to do instead]
+
+### PREFER: [Preferred approach]
+**Over:** [Alternative approach]
+**Because:** [Reasoning]
+
+### PATTERN: [Workflow pattern]
+**When:** [Trigger condition]
+**Do:** [Steps to follow]
+
+### AVOID: [Anti-pattern]
+**Why:** [Explanation]
+**Instead:** [Better approach]
+
+---
+
+*Last updated: 2026-01-19*
+
