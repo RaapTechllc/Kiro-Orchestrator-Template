@@ -1,217 +1,117 @@
-# Setup Guide
+# Setup guide
 
-How to use the Kiro Orchestrator Template in new projects.
+This repository has two layers:
 
-## Prerequisites
+1. the supported provider-neutral kernel under `bin/` and `lib/orch/`;
+2. Kiro-first agent, prompt, steering, and legacy workflow assets under `.kiro/`.
 
-- Node.js 18+ (for Kiro CLI)
-- Bash shell (Git Bash on Windows, native on Mac/Linux)
-- Kiro CLI installed (`npm install -g kiro-cli` or via your package manager)
+## 1. Prerequisites
 
-## Installation
+- Git
+- Bash 3.2+ (Git Bash on Windows is supported)
+- One authenticated coding-agent CLI:
+  - Kiro CLI
+  - Claude Code
+  - OpenAI Codex CLI
+  - OpenCode
+  - Hermes Agent
 
-### Option 1: Copy the Template
+The repository does not install or redistribute provider CLIs. Use each vendor's current first-party installation and authentication documentation.
 
-```bash
-# From a project with this template
-cp -r .kiro /path/to/new/project/
-
-# Navigate to new project
-cd /path/to/new/project
-
-# Verify structure
-ls -la .kiro/
-```
-
-### Option 2: Clone from Template Repository
+## 2. Clone and inspect
 
 ```bash
-# Clone the template (if stored in a repo)
-git clone https://github.com/your-org/orchestrator-template.git
-cp -r orchestrator-template/.kiro /path/to/new/project/
+git clone https://github.com/RaapTechllc/Kiro-Orchestrator-Template.git
+cd Kiro-Orchestrator-Template
+./bin/orch doctor
 ```
 
-## Post-Installation Setup
+`doctor` reports executable availability and version output. It does not authenticate or spend provider quota.
 
-### 1. Configure Project-Specific Paths
-
-Edit `.kiro/agents/orchestrator.json`:
-```json
-{
-  "toolsSettings": {
-    "read": {
-      "allowedPaths": [
-        "./.kiro/**",
-        "./src/**",        // Adjust to your project structure
-        "./lib/**",        // Add your source directories
-        "./package.json"
-      ]
-    }
-  }
-}
-```
-
-### 2. Initialize State Files
-
-Create the required state files in your project root:
+## 3. Dry-run the contract
 
 ```bash
-# Create PLAN.md (your task checklist)
-cat > PLAN.md << 'EOF'
-# Project Plan
-
-## Phase 1: Setup
-- [ ] Task 1.1: Initialize project structure
-- [ ] Task 1.2: Configure dependencies
-
-## Phase 2: Implementation
-- [ ] Task 2.1: Core feature
-- [ ] Task 2.2: Tests
-EOF
-
-# Create PROGRESS.md (agent progress tracking)
-cat > PROGRESS.md << 'EOF'
-# Progress Tracker
-
-## Status: In Progress
-
-### Completed Tasks
-- (none yet)
-
-### Current Tasks
-- Initializing...
-
-### Blocked Tasks
-- (none)
-EOF
-
-# Create activity.log
-touch activity.log
+./bin/orch run \
+  --cli auto \
+  --task "Inspect this repository" \
+  --dry-run
 ```
 
-### 3. Set Execute Permissions (Linux/Mac)
+Dry-run must not invoke a provider or create `.orchestrator/` artifacts.
+
+## 4. Run one provider
 
 ```bash
-chmod +x .kiro/workflows/*.sh
+./bin/orch run \
+  --cli codex \
+  --task "Review the current diff" \
+  --workdir "$PWD" \
+  --timeout 900
 ```
 
-### 4. Test the Setup
+Replace `codex` with `kiro`, `claude`, `opencode`, or `hermes` after `doctor` reports it available.
+
+## 5. Configure an evidence gate
+
+Choose a deterministic command that is already meaningful in the adopting repository:
 
 ```bash
-# Test orchestrator
-kiro-cli --agent orchestrator
-> "What is the current status of this project?"
-
-# Test parallel spawning
-./.kiro/workflows/ralph-kiro.sh
+./bin/orch loop \
+  --cli claude \
+  --task "Make the existing checks pass without weakening them" \
+  --verify "bash tests/run.sh" \
+  --max-iterations 3
 ```
 
-## Customization
+Do not copy placeholder npm commands from another project. The gate must match the repository's real language, test runner, and acceptance criteria.
 
-### Adding Project-Specific Agents
+## Kiro CLI 2.x
 
-1. Copy a template:
+Kiro CLI remains active. The latest official changelog entry observed during the July 2026 audit was 2.12.0. Native Windows support exists; WSL is optional rather than required.
+
+Verify your installation with:
+
 ```bash
-cp .kiro/agents/templates/specialist-base.json .kiro/agents/my-agent.json
+kiro-cli --version
+kiro-cli chat --help
+kiro-cli agent list
 ```
 
-2. Edit the new agent:
-```json
-{
-  "name": "my-agent",
-  "description": "My custom agent for [purpose]",
-  "prompt": "You are a specialist in [domain]...",
-  "model": "claude-sonnet-4-20250514",
-  "tools": ["read", "write", "glob", "grep", "shell"],
-  "resources": ["file://relevant/paths/**/*"]
-}
-```
+Run the included Kiro orchestrator agent through the portable seam:
 
-3. Add to ralph-master if needed for parallel work:
-```json
-// In ralph-master.json
-{
-  "agents": [
-    "security-specialist",
-    "my-agent"  // Add here
-  ]
-}
-```
-
-### Configuring Workflows
-
-Edit `.kiro/workflows/ralph-kiro.sh` to customize:
-- Agent list (line 7-10)
-- Parallel count
-- Completion signals
-- Monitoring intervals
-
-### Adding Custom Prompts
-
-Create new prompts in `.kiro/prompts/`:
-```markdown
-# .kiro/prompts/my-workflow.md
-
-## Purpose
-[What this prompt does]
-
-## Instructions
-1. Step 1
-2. Step 2
-3. Step 3
-
-## Output Format
-[Expected output structure]
-```
-
-## Troubleshooting
-
-### "Agent not found"
-- Verify `.kiro/agents/[name].json` exists
-- Check JSON syntax is valid
-- Ensure `name` field matches filename
-
-### "Permission denied" on workflows
 ```bash
-chmod +x .kiro/workflows/*.sh
+./bin/orch loop \
+  --cli kiro \
+  --role orchestrator \
+  --task "Implement the approved task" \
+  --verify "bash tests/run.sh"
 ```
 
-### Agents not completing
-- Check `activity.log` for errors
-- Verify `<promise>DONE</promise>` signal is being written
-- Increase timeout in ralph-kiro.sh
+Headless Kiro runs require an explicit tool-trust policy. The adapter does not grant blanket trust by default. Prefer a least-privilege custom agent and selective trust configuration. `--unsafe` maps to `--trust-all-tools` and should only be used in an isolated disposable workspace.
 
-### Context window exceeded
-- Reduce files in `resources` array
-- Use more specific glob patterns
-- Split into C-threads (phases)
+### Kiro V3
 
-## Environment Variables
+Kiro V3 is currently an opt-in early-access harness invoked with `kiro-cli --v3`. It changes agent, permission, tag, and hook configuration. Do not point V3 at the included Kiro 2.x JSON and assume compatibility. Follow `docs/research/kiro-cli-status-2026-07.md` before migrating.
 
-Optional environment variables:
+## Safe and unsafe modes
+
+`--unsafe` means a different dangerous action for every adapter. It is never enabled by auto-selection or by headless mode. Review `docs/adapters.md` before use.
+
+For risky tasks:
+
+1. use a disposable clone or worktree;
+2. limit credentials and network access;
+3. use the provider's native allowlist/sandbox controls;
+4. set a short outer timeout;
+5. inspect `.orchestrator/runs/<id>/` before integrating changes.
+
+## Validate the template
+
 ```bash
-export KIRO_MODEL="claude-opus-4-5-20251101"  # Default model
-export KIRO_PARALLEL=5                          # Default parallel count
-export KIRO_TIMEOUT=3600                        # Default timeout (seconds)
+bash tests/run.sh
+bash -n bin/orch lib/orch/common.sh lib/orch/timeout.sh lib/orch/adapters/*.sh tests/run.sh
+shellcheck -x -P . bin/orch lib/orch/adapters/*.sh lib/orch/timeout.sh tests/run.sh
+python -m json.tool .kiro/agents/orchestrator.json >/dev/null
 ```
 
-## File Locations
-
-| File | Purpose |
-|------|---------|
-| `PLAN.md` | Task checklist (project root) |
-| `PROGRESS.md` | Agent progress tracking (project root) |
-| `activity.log` | Execution timeline (project root) |
-| `.kiro/` | All orchestration config |
-| `~/.kiro/evolution/` | Global agent evolution logs |
-
-## Next Steps
-
-1. Read [Thread Engineering Guide](thread-engineering-guide.md)
-2. Run your first P-thread with `ralph-kiro.sh`
-3. Customize agents for your domain
-4. Track improvements with metrics
-
----
-
-*For issues or enhancements, update the template and re-copy to projects.*
+CI also validates every tracked JSON file and all tracked shell syntax.

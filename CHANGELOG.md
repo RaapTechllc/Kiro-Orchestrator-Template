@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Provider-neutral `bin/orch` command surface with `doctor`, `run`, `loop`, and `verify`.
+- Process adapters for Kiro CLI, Claude Code, Codex CLI, OpenCode, and Hermes Agent.
+- External evidence gates, bounded retries, provider/verification wall-time limits, and reproducible run ledgers.
+- Stub-backed contract tests for safe/unsafe mappings, prompt transport, raw output capture, failures, timeouts, and exhaustion.
+- Multi-platform GitHub Actions workflow for Bash syntax, JSON validation, contract tests, and supported-core ShellCheck.
+- Architecture, adapter, migration, research, roadmap, security, contribution, and community-health documentation.
+- Deterministic golden-path fixture.
+- Live externally verified golden-path evidence for Claude Code, current Codex CLI, and Hermes Agent.
+
+### Changed
+
+- Repositioned the repository from a Kiro-only workflow collection to a Kiro-first, provider-neutral orchestration harness.
+- Replaced the simulated `ralph-kiro.sh` runner with a compatibility wrapper around `bin/orch loop --cli kiro`.
+- Updated maintained Kiro agents from historical `use_subagent` references to `subagent`.
+- Removed top-level fixed provider model IDs from Kiro agent configurations.
+- Enforced LF endings for shell automation.
+- Canonicalized working directories and run roots so relative paths survive provider directory changes without Codex double-resolution, including native path translation under Git Bash/Cygwin.
+
+### Security
+
+- Permission, sandbox, auto-approval, tool-trust, and yolo bypass mappings now require explicit `--unsafe`.
+- Conservative defaults now use selective Kiro file-tool trust, Claude `dontAsk` with a file-tool allowlist, explicit Codex workspace sandboxing, and an OpenCode deny-by-default policy.
+- Dry-run is invocation-free and write-free.
+- Prompts are transported as data through arrays or stdin; provider commands do not use `eval`.
+- Generated `.orchestrator/` evidence is excluded from Git.
+- Run roots carry a schema marker, standalone verification is append-only, arbitrary verification directories are rejected, and artifacts inherit `umask 077`.
+- Timeout handling creates a provider process group, terminates ordinary descendants, and escalates/reaps on INT, TERM, or HUP, with a documented limit for deliberately detached sessions.
+- Watchdog timeout markers distinguish real timeouts from providers or verification commands that naturally return exit 124.
+- OpenCode unsafe mode follows the locally audited `--dangerously-skip-permissions` surface and documents upstream flag drift.
+- Zero-exit provider attempts are recorded as `unverified`, preventing provider-specific API errors hidden behind exit 0 from being mislabeled as completion.
+- Simulated, completion-token-controlled, destructive worktree, and broad Git automation entry points fail closed by default; active Kiro settings no longer load the legacy stop hook or allow `Bash(*)`.
+
+### Deprecated
+
+- `<promise>DONE</promise>` and provider-written progress files as completion authority.
+- Legacy `.kiro/workflows/` paths as supported production execution; hazardous entry points are quarantined behind an explicit risk-acceptance environment value until individually redesigned and hardened.
+
 ## [2.0.0] - 2026-01-19
 
 ### Changed

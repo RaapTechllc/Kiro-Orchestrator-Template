@@ -65,9 +65,9 @@ kiro-cli --agent frontend-designer
 ## What's New
 
 ### 📚 Documentation
-- **[agent-browser-guide.md](.kiro/docs/agent-browser-guide.md)** - Comprehensive guide
-- **[agent-browser-examples.md](.kiro/examples/agent-browser-examples.md)** - Migration examples
-- **[agent-browser-setup.md](.kiro/docs/agent-browser-setup.md)** - Quick setup guide
+- **[agent-browser-guide.md](../agent-browser-guide.md)** - Comprehensive guide
+- **[agent-browser-examples.md](../../examples/agent-browser-examples.md)** - Migration examples
+- **[agent-browser-setup.md](../agent-browser-setup.md)** - Quick setup guide
 
 ### 🔧 Configuration
 - **Playwright MCP disabled** (not removed) in `.kiro/settings/mcp.json`
@@ -187,8 +187,8 @@ If you encounter issues:
 
 ## Support
 
-- **Issues?** Check [agent-browser-guide.md](.kiro/docs/agent-browser-guide.md) troubleshooting
-- **Questions?** See [agent-browser-examples.md](.kiro/examples/agent-browser-examples.md)
+- **Issues?** Check [agent-browser-guide.md](../agent-browser-guide.md) troubleshooting
+- **Questions?** See [agent-browser-examples.md](../../examples/agent-browser-examples.md)
 - **Bugs?** Report in LEARNINGS.md or GitHub issues
 
 ---

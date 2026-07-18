@@ -1,253 +1,260 @@
-<p align="center">
-  <img src="https://kiro.dev/images/kiro-wordmark.png" alt="Kiro" width="200">
-</p>
+# Agent Orchestrator Template
 
-<h1 align="center">🎭 Orchestrator Template</h1>
+**Kiro-first assets. One evidence-gated runner for Kiro CLI, Claude Code, Codex CLI, OpenCode, and Hermes Agent.**
 
-<p align="center">
-  <strong>Production-ready multi-agent orchestration for Kiro CLI</strong>
-</p>
+[![CI](https://github.com/RaapTechllc/Kiro-Orchestrator-Template/actions/workflows/ci.yml/badge.svg)](https://github.com/RaapTechllc/Kiro-Orchestrator-Template/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Status: beta](https://img.shields.io/badge/status-beta-orange.svg)
 
-<p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-agents">Agents</a> •
-  <a href="#-workflows">Workflows</a> •
-  <a href="#-self-improvement">Self-Improvement</a>
-</p>
-a
-<p align="center">
-  <img src="https://img.shields.io/badge/Kiro_CLI-Compatible-blue?style=flat-square" alt="Kiro CLI Compatible">
-  <img src="https://img.shields.io/badge/Agents-10-green?style=flat-square" alt="10 Agents">
-  <img src="https://img.shields.io/badge/Thread_Types-5-purple?style=flat-square" alt="5 Thread Types">
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT License">
-</p>
+Most coding-agent loops trust the model to say it is done. This template does not. It launches the selected CLI through a provider adapter, retains the raw output, runs a deterministic command outside the agent, and retries with bounded tail excerpts from the failure evidence until the gate passes or the budget is exhausted. Full logs remain in the run ledger.
 
----
+```text
+GOAL -> PROVIDER ATTEMPT -> EXTERNAL VERIFY
+              ^                 |
+              |--- evidence ----|
 
-## 🚀 Quick Start
+PASS -> verified     budget exhausted -> failure
+```
+
+> [!IMPORTANT]
+> The new `bin/orch` kernel is beta and locally contract-tested with provider stubs on Windows/Git Bash. CI is configured for Windows, Linux, and macOS but has not run remotely for this branch. Live externally verified golden paths passed on the first iteration with Claude Code, Codex 0.144.5, and Hermes Agent. OpenCode authentication failed during its live attempt, and Kiro was verified against current first-party documentation but was not installed locally. The older `.kiro/workflows/` collection is retained as an experimental pattern library unless explicitly marked otherwise.
+
+## Why this exists
+
+- **Avoid CLI lock-in.** Provider syntax lives behind five small adapters.
+- **Stop trusting completion prose.** Exit status plus an external verification command decides completion.
+- **Bound autonomous work.** Every attempt has iteration and wall-time limits.
+- **Keep the evidence.** Prompts, raw stdout/stderr, verification logs, and statuses are written to a run ledger.
+- **Fail closed.** Missing CLIs, provider failures, timeouts, and exhausted budgets return non-zero.
+
+## Quick start
+
+Requirements:
+
+- Bash 3.2+ (Git Bash on Windows works)
+- At least one supported coding-agent CLI, already installed and authenticated
 
 ```bash
-# Clone the template
-git clone https://github.com/RaapTechllc/Kiro-Orchestrator-Template.git my-project
-cd my-project
+git clone https://github.com/RaapTechllc/Kiro-Orchestrator-Template.git
+cd Kiro-Orchestrator-Template
 
-# Install agent-browser for E2E testing (optional)
-npm install -g agent-browser
+# See which adapters are usable on this machine.
+./bin/orch doctor
 
-# Start the orchestrator
-kiro-cli --agent orchestrator
+# Prove selection and prompt construction without invoking an agent or writing artifacts.
+./bin/orch run \
+  --cli auto \
+  --task "Audit this repository and name the three highest-risk gaps" \
+  --dry-run
 ```
 
-That's it. The orchestrator will guide you through spec-driven development with intelligent task delegation.
-
----
-
-## ✨ Features
-
-### 🎯 Spec-Driven Development
-Structured workflow: **Requirements → Design → Tasks → Execute**
-
-```
-@plan-feature User Authentication
-```
-
-The orchestrator creates specs, waits for approval at each phase, then delegates to specialists.
-
-### 🧵 Thread-Based Execution
-Five execution patterns for any workflow:
-
-| Thread | Pattern | Use Case |
-|--------|---------|----------|
-| **P-Thread** | Parallel | Multiple agents working simultaneously |
-| **C-Thread** | Chained | Sequential phases with checkpoints |
-| **F-Thread** | Fusion | Multiple perspectives, merged result |
-| **B-Thread** | Boss | Nested orchestration of threads |
-| **L-Thread** | Long-running | Extended autonomous work |
-
-### 🌳 Git Worktree Isolation
-Each agent works in its own branch. No conflicts. Clean merges.
+### Run one agent
 
 ```bash
-.kiro/workflows/worktree-manager.sh create frontend-designer
-# Agent works in isolated branch
-.kiro/workflows/worktree-manager.sh merge frontend-designer
+./bin/orch run \
+  --cli codex \
+  --task "Review the current diff and identify correctness risks" \
+  --workdir "$PWD" \
+  --timeout 900
 ```
 
-### 🧠 Self-Improving Agents
-Agents learn from corrections and improve over time.
+### Run a bounded repair loop
+
+The verification command is the authority. The model cannot override it.
 
 ```bash
-# Capture a learning
-.kiro/workflows/self-improve.sh add correction "Use pnpm not npm"
-
-# Reflect on session
-@reflect
+./bin/orch loop \
+  --cli claude \
+  --task "Make the shell test suite pass without weakening assertions" \
+  --verify "bash tests/run.sh" \
+  --max-iterations 3 \
+  --timeout 1800 \
+  --verify-timeout 300
 ```
 
----
+Expected terminal summary:
 
-## 🤖 Agents
-
-| Agent | Specialty |
-|-------|-----------|
-| `orchestrator` | Workflow coordination, SPEC pattern, task delegation |
-| `ralph-master` | B-Thread meta-orchestration for complex workflows |
-| `code-surgeon` | Code review, refactoring, security analysis |
-| `test-architect` | Testing strategy, coverage, test generation |
-| `security-specialist` | OWASP audits, vulnerability detection |
-| `frontend-designer` | UI/UX, accessibility, responsive design |
-| `db-wizard` | Database design, migrations, optimization |
-| `devops-automator` | CI/CD, deployment, infrastructure |
-| `doc-smith` | Documentation, READMEs, API docs |
-| `agent-creator` | Create new custom agents |
-
----
-
-## 🔄 Workflows
-
-### The Ralph Loop
-Agents work in autonomous cycles until task completion:
-
-```
-┌─────────────────────────────────────────┐
-│            RALPH LOOP                   │
-├─────────────────────────────────────────┤
-│  1. Load task from PLAN.md              │
-│  2. Execute with available tools        │
-│  3. Validate (tests, lint, typecheck)   │
-│  4. Update PROGRESS.md                  │
-│  5. Loop until done                     │
-│  6. Signal: <promise>DONE</promise>     │
-└─────────────────────────────────────────┘
+```text
+run: .orchestrator/runs/<run-id>
+adapter: claude
+iterations: 2
+status: verified
 ```
 
-### Available Scripts
+### Five-minute golden path
+
+This fixture asks an authenticated Codex CLI to create one exact file, then proves it with a deterministic shell gate.
 
 ```bash
-# Parallel execution with worktree isolation
-.kiro/workflows/ralph-kiro.sh --worktrees
+demo_dir=$(mktemp -d)
+cp -R examples/golden-path/. "$demo_dir"
 
-# Sequential phases with checkpoints
-.kiro/workflows/chain-workflow.sh
-
-# Multiple agents, fused results
-.kiro/workflows/fusion.sh
-
-# Real-time monitoring dashboard
-.kiro/workflows/dashboard.sh
+./bin/orch loop \
+  --cli codex \
+  --task-file "$demo_dir/TASK.md" \
+  --workdir "$demo_dir" \
+  --verify "bash verify.sh" \
+  --max-iterations 3 \
+  --timeout 600
 ```
 
----
+Success means `status: verified` and `$demo_dir/result.txt` contains exactly `orchestrated`. See [the fixture documentation](examples/golden-path/README.md) for cleanup and provider variants.
 
-## 📁 Structure
+## Supported adapters
 
-```
-.kiro/
-├── agents/           # 10 specialist agents
-├── prompts/          # Reusable prompts (@plan-feature, @reflect, etc.)
-├── workflows/        # Execution scripts (P/C/F/B/L threads)
-├── steering/         # Project context (product, tech, structure)
-├── hooks/            # Automation triggers
-├── specs/            # Feature specifications
-└── docs/             # Extended documentation
+| Adapter | Noninteractive command | Raw output | Native role flag | Default posture | `--unsafe` mapping |
+|---|---|---|---|---|---|
+| Kiro | `kiro-cli chat --no-interactive` | Text | `--agent` | Trust only read/write/grep/glob tools | `--trust-all-tools` |
+| Claude Code | `claude -p` | JSON | `--agent` | `dontAsk` plus explicit file-tool allowlist | `--dangerously-skip-permissions` |
+| Codex CLI | `codex exec --json` | JSONL | Goal prompt only | Explicit `workspace-write` sandbox | bypass approvals and sandbox |
+| OpenCode | `opencode run --format json` | JSON events | `--agent` | Explicit deny-by-default file-tool policy | locally observed `--dangerously-skip-permissions` |
+| Hermes Agent | `hermes chat --quiet --query` | Text | Goal prompt only | Existing approval policy; no OS sandbox | `--yolo` |
 
-CLAUDE.md             # Core rules for all agents
-LEARNINGS.md          # Captured corrections and patterns
-PLAN.md               # Current task checklist
-PROGRESS.md           # Real-time status tracking
-```
+These are process adapters, not a fictional universal agent API. Tool approval is not an OS sandbox: Kiro and Hermes tools still run with the user's filesystem permissions, while Codex's workspace sandbox is a separate control. Sessions, subagents, hooks, network controls, JSON schemas, and worktree features differ by vendor. See [Adapter contract and caveats](docs/adapters.md).
 
----
+Kiro CLI is active: the latest official changelog entry observed in the audit was **2.12.0 on July 9, 2026**. Kiro V3 is still an opt-in early-access harness and is not claimed compatible with the included Kiro 2.x JSON agents. See [Kiro CLI status research](docs/research/kiro-cli-status-2026-07.md).
 
-## 🧠 Self-Improvement
+## Commands
 
-The template includes a self-improvement system based on the principle: **"Correct once, never again."**
+### `doctor`
 
-### How It Works
-
-1. **Capture** - When you correct an agent, it's logged to `LEARNINGS.md`
-2. **Reflect** - Use `@reflect` at session end to analyze what worked
-3. **Promote** - High-frequency learnings get added to `CLAUDE.md`
-4. **Evolve** - Agents improve with each session
-
-### Learning Types
-
-```markdown
-CORRECTION: "Use pnpm not npm"
-PREFER: "Always use TypeScript strict mode"
-PATTERN: "Run lint before commit"
-AVOID: "Don't use any types"
-```
-
----
-
-## 🛠️ Customization
-
-### Add Your Project Context
-
-Edit the steering files:
+Detects all five executables and records their reported versions.
 
 ```bash
-.kiro/steering/product.md   # What you're building
-.kiro/steering/tech.md      # Your tech stack
-.kiro/steering/structure.md # Your file organization
+./bin/orch doctor
 ```
 
-### Create Custom Agents
+### `run`
+
+Executes one provider attempt and records the raw result. A zero provider exit is labeled `unverified`; `run` has no external gate and therefore never claims task completion.
 
 ```bash
-kiro-cli --agent agent-creator
+./bin/orch run --help
 ```
 
-Or copy `.kiro/agents/templates/specialist-base.json` and customize.
+Important options:
 
-### Add Prompts
+- `--cli auto|kiro|claude|codex|opencode|hermes`
+- `--task TEXT` or `--task-file FILE`
+- `--workdir DIR`
+- `--role NAME`
+- `--timeout SECONDS`
+- `--unsafe`
+- `--dry-run`
 
-Create `.kiro/prompts/my-prompt.md`:
+### `loop`
 
-```markdown
-# My Custom Prompt
+Runs fresh attempts until the external gate passes or the attempt budget is exhausted.
 
-When invoked, ask: What specific task should I help with?
-
-Then do the thing...
+```bash
+./bin/orch loop --help
 ```
 
-Use with `@my-prompt`
+A loop requires `--verify`. Completion without external evidence is rejected.
 
----
+### `verify`
 
-## 📚 Documentation
+Runs a trusted verification command against a marked orchestrator run and appends a unique evidence directory.
 
-- [Setup Guide](.kiro/docs/setup-guide.md)
-- [Thread Engineering Guide](.kiro/docs/thread-engineering-guide.md)
-- [Kiro CLI Reference](.kiro/docs/kiro-cli-reference.md)
-- [Agent Documentation](.kiro/agents/README.md)
+```bash
+./bin/orch verify \
+  --run .orchestrator/runs/<run-id> \
+  --workdir "$PWD" \
+  --verify "bash tests/run.sh"
+```
 
----
+`--verify` is intentionally a shell command supplied by the repository operator. Never pass untrusted user input into it.
 
-## 🤝 Contributing
+## Run ledger
 
-1. Fork the repo
-2. Create a feature branch
-3. Make your changes
-4. Submit a PR
+By default, artifacts are written under `.orchestrator/runs/` and ignored by Git.
 
----
+```text
+<run-id>/
+├── .orch-run              # schema/type marker required by `orch verify`
+├── prompt.md
+├── stdout.log
+├── stderr.log
+├── meta.env
+├── provider.timeout       # only when the provider exceeds its limit
+├── verify.command         # exact trusted operator-supplied gate
+├── verify.env
+├── verify.stdout.log
+├── verify.stderr.log
+├── verify.timeout         # only when the gate exceeds its limit
+├── feedback.txt
+├── <timestamp>-verification/  # append-only standalone `orch verify` evidence
+└── summary.env
+```
 
-## 📄 License
+The `.env` suffix means line-oriented metadata; these files are evidence, **not shell scripts and must never be sourced**.
 
-MIT © [RaapTech LLC](https://github.com/RaapTechllc)
+Retry prompts contain bounded 80-line tail excerpts. `feedback.txt` identifies the full provider and verifier logs so truncation is explicit and complete evidence remains available in the ledger.
 
----
+## Safety model
 
-<p align="center">
-  <strong>Built for developers who want AI agents that actually work together.</strong>
-</p>
+- `--dry-run` invokes nothing and writes nothing.
+- Provider permission bypass is never enabled implicitly.
+- `--unsafe` is explicit because the mappings are materially dangerous and not equivalent.
+- Provider and gate processes have outer wall-time limits.
+- Prompts are passed as arguments or stdin through Bash arrays; no provider command uses `eval`.
+- Raw provider output is retained instead of silently normalized or discarded.
+- The portable kernel does not auto-merge branches or delete worktrees.
 
-<p align="center">
-  <a href="https://kiro.dev">Kiro</a> •
-  <a href="https://github.com/RaapTechllc/Kiro-Orchestrator-Template/issues">Issues</a> •
-  <a href="https://github.com/RaapTechllc/Kiro-Orchestrator-Template/discussions">Discussions</a>
-</p>
+The watchdog starts the provider in its own Bash process group and terminates that group on timeout. A provider that deliberately creates a detached process group/session can still outlive it; use container or OS-level isolation for hostile workloads.
+
+## Kiro-first assets
+
+The repository still includes:
+
+- Kiro 2.x custom agents under `.kiro/agents/`
+- Steering, prompts, specs, hooks, and examples
+- Historical P/C/F/B/L thread experiments
+- Worktree and review prototypes
+
+The former `ralph-kiro.sh` claimed to launch parallel Kiro workers but only logged and slept; its Kiro command was commented out and used an undocumented flag. It is now a compatibility wrapper around the real `bin/orch loop --cli kiro` seam.
+
+Other legacy workflows are retained for research and migration, not included in the supported-core claim. See [Migration guide](docs/migration-v3.md) and [full audit](docs/audit/2026-07-16-full-audit.md).
+
+## Architecture and research
+
+- [Architecture](docs/architecture.md)
+- [Adapter contract](docs/adapters.md)
+- [Domain vocabulary](CONTEXT.md)
+- [Architecture decision record](docs/adr/0001-provider-neutral-execution.md)
+- [Kiro CLI status, July 2026](docs/research/kiro-cli-status-2026-07.md)
+- [Multi-CLI orchestration research](docs/research/multi-cli-orchestration-2026-07.md)
+- [GitHub growth audit](docs/research/github-growth-audit-2026-07.md)
+- [Roadmap](ROADMAP.md)
+
+## Verification
+
+```bash
+bash tests/run.sh
+shellcheck -x -P . bin/orch lib/orch/adapters/*.sh lib/orch/timeout.sh tests/run.sh
+```
+
+See [VERIFICATION.md](VERIFICATION.md) for the exact supported claim and current limitations.
+
+## Use as a template
+
+After the GitHub template setting is enabled:
+
+```bash
+gh repo create my-agent-workflow \
+  --template RaapTechllc/Kiro-Orchestrator-Template \
+  --private \
+  --clone
+```
+
+Delete the example project state you do not need, keep `bin/`, `lib/orch/`, `tests/`, and only the provider-specific assets you intend to maintain.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md). Adapter changes must include contract tests and preserve safe defaults. Security reports belong in [SECURITY.md](SECURITY.md), not public issues.
+
+## License and trademarks
+
+MIT © [RaapTech LLC](https://github.com/RaapTechllc).
+
+Kiro, Claude, Codex, OpenCode, and Hermes are names of their respective projects or owners. This independent template is not affiliated with or endorsed by those vendors, and it does not redistribute their CLIs.
