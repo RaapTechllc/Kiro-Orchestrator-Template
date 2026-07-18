@@ -1,0 +1,12 @@
+# Keep executable automation portable across macOS, Linux, and Git Bash.
+* text=auto
+*.sh text eol=lf
+/bin/orch text eol=lf
+/.gitattributes text eol=lf
+/.gitignore text eol=lf
+
+# Keep changed documentation and configuration portable.
+*.md text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

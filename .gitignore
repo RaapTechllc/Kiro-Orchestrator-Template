@@ -7,6 +7,7 @@ Thumbs.db
 activity.log
 
 # Runtime state (generated during execution)
+.orchestrator/
 .kiro/thread-state/
 .kiro/worktrees/
 

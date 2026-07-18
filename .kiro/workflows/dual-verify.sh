@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: prose-token legacy verification is disabled; use bin/orch verify with an external command.' >&2
+  exit 2
+fi
 # .kiro/workflows/dual-verify.sh
 #
 # Dual-Agent Verification Pattern

@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: completion-token Ralph v2 is disabled; use bin/orch loop with an external verification command.' >&2
+  exit 2
+fi
 # .kiro/workflows/ralph-loop-v2.sh
 #
 # Improved Ralph loop with:

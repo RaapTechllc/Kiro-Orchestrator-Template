@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+set -u
+umask 077
+
+ORCH_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=lib/orch/common.sh
+. "$ORCH_ROOT/lib/orch/common.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: orch <command> [options]
+
+Commands:
+  doctor                 Show supported CLIs and local availability
+  run                    Execute one normalized goal
+  loop                   Iterate until deterministic verification passes
+  verify                 Re-run verification for a recorded run
+  help                    Show this help
+EOF
+}
+
+cmd_doctor() {
+  found=0
+  printf '%-11s %-11s %-14s %s\n' 'ADAPTER' 'STATUS' 'COMMAND' 'VERSION'
+  printf '%-11s %-11s %-14s %s\n' '-------' '------' '-------' '-------'
+  for adapter in $ORCH_ADAPTERS; do
+    command_name=$(adapter_command "$adapter")
+    if adapter_call "$adapter" available >/dev/null 2>&1; then
+      found=$((found + 1))
+      version=$(adapter_call "$adapter" version 2>/dev/null | first_line)
+      [ -n "$version" ] || version='unknown'
+      printf '%-11s %-11s %-14s %s\n' "$adapter" 'available' "$command_name" "$version"
+    else
+      printf '%-11s %-11s %-14s %s\n' "$adapter" 'missing' "$command_name" '-'
+    fi
+  done
+  printf '\nDetected %d of %d supported adapters.\n' "$found" "$ORCH_ADAPTER_COUNT"
+  [ "$found" -gt 0 ]
+}
+
+cmd_run() {
+  requested_cli=auto
+  task=''
+  task_file=''
+  workdir=$(pwd)
+  run_root='.orchestrator/runs'
+  role=''
+  unsafe=false
+  dry_run=false
+  timeout_seconds=1800
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --cli) [ "$#" -ge 2 ] || die '--cli requires a value'; requested_cli=$2; shift 2 ;;
+      --task) [ "$#" -ge 2 ] || die '--task requires a value'; task=$2; shift 2 ;;
+      --task-file) [ "$#" -ge 2 ] || die '--task-file requires a value'; task_file=$2; shift 2 ;;
+      --workdir) [ "$#" -ge 2 ] || die '--workdir requires a value'; workdir=$2; shift 2 ;;
+      --run-root) [ "$#" -ge 2 ] || die '--run-root requires a value'; run_root=$2; shift 2 ;;
+      --role) [ "$#" -ge 2 ] || die '--role requires a value'; role=$2; shift 2 ;;
+      --timeout) [ "$#" -ge 2 ] || die '--timeout requires seconds'; timeout_seconds=$2; shift 2 ;;
+      --unsafe) unsafe=true; shift ;;
+      --dry-run) dry_run=true; shift ;;
+      -h|--help)
+        cat <<'EOF'
+Usage: orch run (--task TEXT | --task-file FILE) [options]
+
+Options:
+  --cli NAME       auto, kiro, claude, codex, opencode, or hermes
+  --workdir DIR    working directory for the agent
+  --run-root DIR   artifact root (default: .orchestrator/runs)
+  --role NAME      provider-native agent/role where supported
+  --timeout SEC    outer provider wall-time limit (default: 1800)
+  --unsafe         enable provider-specific permission bypass
+  --dry-run        show the decision; do not invoke or write
+EOF
+        return 0
+        ;;
+      *) die "unknown run option: $1" ;;
+    esac
+  done
+
+  require_single_line --workdir "$workdir"
+  require_single_line --run-root "${run_root:-}"
+  require_single_line --role "${role:-}"
+  [ -d "$workdir" ] || die "workdir does not exist: $workdir"
+  workdir=$(canonical_dir "$workdir") || die "cannot resolve workdir: $workdir"
+  if [ -n "$task" ] && [ -n "$task_file" ]; then
+    die 'use only one of --task or --task-file'
+  fi
+  if [ -n "$task_file" ]; then
+    [ -f "$task_file" ] || die "task file does not exist: $task_file"
+    task=$(<"$task_file")
+  fi
+  [ -n "$task" ] || die 'one of --task or --task-file is required'
+  case "$timeout_seconds" in
+    ''|*[!0-9]*) die '--timeout must be a positive integer' ;;
+  esac
+  [ "$timeout_seconds" -gt 0 ] || die '--timeout must be greater than zero'
+
+  selected=$(select_adapter "$requested_cli") || exit $?
+
+  if [ "$dry_run" = true ]; then
+    printf 'DRY RUN\n'
+    printf 'adapter: %s\n' "$selected"
+    printf 'command: %s\n' "$(adapter_command "$selected")"
+    printf 'workdir: %s\n' "$workdir"
+    printf 'role: %s\n' "${role:-default}"
+    printf 'unsafe: %s\n' "$unsafe"
+    printf 'timeout_seconds: %s\n' "$timeout_seconds"
+    printf 'task: %s\n' "$task"
+    return 0
+  fi
+
+  run_dir=$(new_run_dir "$run_root" run) || return $?
+  prompt_file="$run_dir/prompt.md"
+  stdout_file="$run_dir/stdout.log"
+  stderr_file="$run_dir/stderr.log"
+  write_goal_prompt "$prompt_file" "$task" "$workdir" "$role" "$unsafe" 1
+
+  started_at=$(utc_now)
+  run_adapter_with_timeout "$selected" "$timeout_seconds" "$run_dir/provider.timeout" \
+    "$prompt_file" "$workdir" "$role" "$unsafe" > "$stdout_file" 2> "$stderr_file"
+  exit_code=$?
+  finished_at=$(utc_now)
+  if [ "$exit_code" -eq 0 ]; then
+    status=unverified
+  elif [ "$exit_code" -eq 124 ] && [ -f "$run_dir/provider.timeout" ]; then
+    status=timed_out
+  else
+    status=failed
+  fi
+  write_run_meta "$run_dir/meta.env" "$selected" "$(adapter_command "$selected")" "$workdir" "$role" "$unsafe" "$started_at" "$finished_at" "$exit_code" "$status"
+
+  printf 'run: %s\n' "$run_dir"
+  printf 'adapter: %s\n' "$selected"
+  printf 'status: %s\n' "$status"
+  printf 'exit_code: %s\n' "$exit_code"
+  return "$exit_code"
+}
+
+cmd_loop() {
+  requested_cli=auto
+  task=''
+  task_file=''
+  verification_command=''
+  max_iterations=5
+  timeout_seconds=1800
+  verify_timeout_seconds=600
+  workdir=$(pwd)
+  run_root='.orchestrator/runs'
+  role=''
+  unsafe=false
+  dry_run=false
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --cli) [ "$#" -ge 2 ] || die '--cli requires a value'; requested_cli=$2; shift 2 ;;
+      --task) [ "$#" -ge 2 ] || die '--task requires a value'; task=$2; shift 2 ;;
+      --task-file) [ "$#" -ge 2 ] || die '--task-file requires a value'; task_file=$2; shift 2 ;;
+      --verify) [ "$#" -ge 2 ] || die '--verify requires a command'; verification_command=$2; shift 2 ;;
+      --max-iterations) [ "$#" -ge 2 ] || die '--max-iterations requires a value'; max_iterations=$2; shift 2 ;;
+      --timeout) [ "$#" -ge 2 ] || die '--timeout requires seconds'; timeout_seconds=$2; shift 2 ;;
+      --verify-timeout) [ "$#" -ge 2 ] || die '--verify-timeout requires seconds'; verify_timeout_seconds=$2; shift 2 ;;
+      --workdir) [ "$#" -ge 2 ] || die '--workdir requires a value'; workdir=$2; shift 2 ;;
+      --run-root) [ "$#" -ge 2 ] || die '--run-root requires a value'; run_root=$2; shift 2 ;;
+      --role) [ "$#" -ge 2 ] || die '--role requires a value'; role=$2; shift 2 ;;
+      --unsafe) unsafe=true; shift ;;
+      --dry-run) dry_run=true; shift ;;
+      -h|--help)
+        cat <<'EOF'
+Usage: orch loop (--task TEXT | --task-file FILE) --verify COMMAND [options]
+
+Options:
+  --cli NAME          auto, kiro, claude, codex, opencode, or hermes
+  --verify COMMAND    external evidence gate; exit 0 means pass
+  --max-iterations N  hard attempt budget (default: 5)
+  --timeout SEC       per-attempt provider timeout (default: 1800)
+  --verify-timeout N  per-gate timeout (default: 600)
+  --workdir DIR       working directory for the agent and evidence gate
+  --run-root DIR      artifact root (default: .orchestrator/runs)
+  --role NAME         provider-native agent/role where supported
+  --unsafe            enable provider-specific permission bypass
+  --dry-run           show the decision; do not invoke, verify, or write
+EOF
+        return 0
+        ;;
+      *) die "unknown loop option: $1" ;;
+    esac
+  done
+
+  require_single_line --workdir "$workdir"
+  require_single_line --run-root "${run_root:-}"
+  require_single_line --role "${role:-}"
+  [ -d "$workdir" ] || die "workdir does not exist: $workdir"
+  workdir=$(canonical_dir "$workdir") || die "cannot resolve workdir: $workdir"
+  if [ -n "$task" ] && [ -n "$task_file" ]; then
+    die 'use only one of --task or --task-file'
+  fi
+  if [ -n "$task_file" ]; then
+    [ -f "$task_file" ] || die "task file does not exist: $task_file"
+    task=$(<"$task_file")
+  fi
+  [ -n "$task" ] || die 'one of --task or --task-file is required'
+  [ -n "$verification_command" ] || die '--verify is required; a loop cannot self-certify completion'
+  case "$max_iterations" in
+    ''|*[!0-9]*) die '--max-iterations must be a positive integer' ;;
+  esac
+  [ "$max_iterations" -gt 0 ] || die '--max-iterations must be greater than zero'
+  case "$timeout_seconds" in
+    ''|*[!0-9]*) die '--timeout must be a positive integer' ;;
+  esac
+  [ "$timeout_seconds" -gt 0 ] || die '--timeout must be greater than zero'
+  case "$verify_timeout_seconds" in
+    ''|*[!0-9]*) die '--verify-timeout must be a positive integer' ;;
+  esac
+  [ "$verify_timeout_seconds" -gt 0 ] || die '--verify-timeout must be greater than zero'
+
+  selected=$(select_adapter "$requested_cli") || exit $?
+  if [ "$dry_run" = true ]; then
+    printf 'DRY RUN\n'
+    printf 'adapter: %s\n' "$selected"
+    printf 'workdir: %s\n' "$workdir"
+    printf 'unsafe: %s\n' "$unsafe"
+    printf 'max_iterations: %s\n' "$max_iterations"
+    printf 'timeout_seconds: %s\n' "$timeout_seconds"
+    printf 'verify_timeout_seconds: %s\n' "$verify_timeout_seconds"
+    printf 'verify: %s\n' "$verification_command"
+    printf 'task: %s\n' "$task"
+    return 0
+  fi
+
+  loop_dir=$(new_run_dir "$run_root" loop) || return $?
+  printf '%s\n' "$task" > "$loop_dir/task.md"
+  loop_started=$(utc_now)
+  previous_feedback=''
+  iteration=1
+  while [ "$iteration" -le "$max_iterations" ]; do
+    iteration_dir="$loop_dir/iteration-$iteration"
+    mkdir "$iteration_dir" || return $?
+    write_goal_prompt "$iteration_dir/prompt.md" "$task" "$workdir" "$role" "$unsafe" "$iteration" "$previous_feedback"
+
+    provider_started=$(utc_now)
+    run_adapter_with_timeout "$selected" "$timeout_seconds" "$iteration_dir/provider.timeout" \
+      "$iteration_dir/prompt.md" "$workdir" "$role" "$unsafe" \
+      > "$iteration_dir/stdout.log" 2> "$iteration_dir/stderr.log"
+    provider_exit=$?
+    provider_finished=$(utc_now)
+    if [ "$provider_exit" -eq 0 ]; then
+      provider_status=unverified
+    elif [ "$provider_exit" -eq 124 ] && [ -f "$iteration_dir/provider.timeout" ]; then
+      provider_status=timed_out
+    else
+      provider_status=failed
+    fi
+    write_run_meta "$iteration_dir/meta.env" "$selected" "$(adapter_command "$selected")" "$workdir" "$role" "$unsafe" "$provider_started" "$provider_finished" "$provider_exit" "$provider_status"
+
+    if run_verification "$iteration_dir" "$workdir" "$verification_command" "$verify_timeout_seconds"; then
+      verification_exit=0
+    else
+      verification_exit=$?
+    fi
+    write_feedback "$iteration_dir/feedback.txt" "$provider_exit" "$iteration_dir"
+
+    if [ "$verification_exit" -eq 0 ]; then
+      loop_finished=$(utc_now)
+      {
+        printf 'adapter=%s\n' "$selected"
+        printf 'started_at=%s\n' "$loop_started"
+        printf 'finished_at=%s\n' "$loop_finished"
+        printf 'iterations=%s\n' "$iteration"
+        printf 'max_iterations=%s\n' "$max_iterations"
+        printf 'status=verified\n'
+      } > "$loop_dir/summary.env"
+      printf 'run: %s\n' "$loop_dir"
+      printf 'adapter: %s\n' "$selected"
+      printf 'iterations: %s\n' "$iteration"
+      printf 'status: verified\n'
+      return 0
+    fi
+
+    previous_feedback="$iteration_dir/feedback.txt"
+    iteration=$((iteration + 1))
+  done
+
+  loop_finished=$(utc_now)
+  {
+    printf 'adapter=%s\n' "$selected"
+    printf 'started_at=%s\n' "$loop_started"
+    printf 'finished_at=%s\n' "$loop_finished"
+    printf 'iterations=%s\n' "$max_iterations"
+    printf 'max_iterations=%s\n' "$max_iterations"
+    printf 'status=exhausted\n'
+  } > "$loop_dir/summary.env"
+  printf 'run: %s\n' "$loop_dir"
+  printf 'adapter: %s\n' "$selected"
+  printf 'iterations: %s\n' "$max_iterations"
+  printf 'status: exhausted\n'
+  return 1
+}
+
+cmd_verify() {
+  run_dir=''
+  verification_command=''
+  workdir=$(pwd)
+  dry_run=false
+  timeout_seconds=600
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --run) [ "$#" -ge 2 ] || die '--run requires a directory'; run_dir=$2; shift 2 ;;
+      --verify) [ "$#" -ge 2 ] || die '--verify requires a command'; verification_command=$2; shift 2 ;;
+      --workdir) [ "$#" -ge 2 ] || die '--workdir requires a value'; workdir=$2; shift 2 ;;
+      --timeout) [ "$#" -ge 2 ] || die '--timeout requires seconds'; timeout_seconds=$2; shift 2 ;;
+      --dry-run) dry_run=true; shift ;;
+      -h|--help)
+        cat <<'EOF'
+Usage: orch verify --run DIR --verify COMMAND [--workdir DIR] [--timeout SEC] [--dry-run]
+
+Execute a deterministic evidence command and record its output in an existing run directory.
+EOF
+        return 0
+        ;;
+      *) die "unknown verify option: $1" ;;
+    esac
+  done
+
+  [ -n "$run_dir" ] || die '--run is required'
+  require_single_line --run "$run_dir"
+  [ -d "$run_dir" ] || die "run directory does not exist: $run_dir"
+  [ ! -L "$run_dir" ] || die "run directory must not be a symlink: $run_dir"
+  [ -f "$run_dir/.orch-run" ] && [ ! -L "$run_dir/.orch-run" ] || \
+    die "not an orchestrator run directory: $run_dir"
+  IFS= read -r run_marker_schema < "$run_dir/.orch-run" || \
+    die "invalid orchestrator run marker: $run_dir/.orch-run"
+  [ "$run_marker_schema" = 'schema=1' ] || \
+    die "unsupported orchestrator run marker: $run_dir/.orch-run"
+  require_single_line --workdir "$workdir"
+  [ -d "$workdir" ] || die "workdir does not exist: $workdir"
+  workdir=$(canonical_dir "$workdir") || die "cannot resolve workdir: $workdir"
+  [ -n "$verification_command" ] || die '--verify is required'
+  case "$timeout_seconds" in
+    ''|*[!0-9]*) die '--timeout must be a positive integer' ;;
+  esac
+  [ "$timeout_seconds" -gt 0 ] || die '--timeout must be greater than zero'
+
+  if [ "$dry_run" = true ]; then
+    printf 'DRY RUN\n'
+    printf 'run: %s\n' "$run_dir"
+    printf 'workdir: %s\n' "$workdir"
+    printf 'timeout_seconds: %s\n' "$timeout_seconds"
+    printf 'verify: %s\n' "$verification_command"
+    return 0
+  fi
+
+  evidence_dir=$(new_run_dir "$run_dir" verification) || return $?
+  if run_verification "$evidence_dir" "$workdir" "$verification_command" "$timeout_seconds"; then
+    verification_exit=0
+    verification_status=passed
+  else
+    verification_exit=$?
+    if [ "$verification_exit" -eq 124 ] && [ -f "$evidence_dir/verify.timeout" ]; then
+      verification_status=timed_out
+    else
+      verification_status=failed
+    fi
+  fi
+  printf 'run: %s\n' "$run_dir"
+  printf 'evidence: %s\n' "$evidence_dir"
+  printf 'status: %s\n' "$verification_status"
+  printf 'exit_code: %s\n' "$verification_exit"
+  return "$verification_exit"
+}
+
+command_name=${1:-help}
+case "$command_name" in
+  doctor) shift; cmd_doctor "$@" ;;
+  run) shift; cmd_run "$@" ;;
+  loop) shift; cmd_loop "$@" ;;
+  verify) shift; cmd_verify "$@" ;;
+  help|-h|--help) usage ;;
+  *)
+    usage >&2
+    die "unknown command: $command_name"
+    ;;
+esac

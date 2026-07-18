@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: token-controlled legacy dashboard actions are disabled; use the supported bin/orch ledger.' >&2
+  exit 2
+fi
 # dashboard.sh - Real-time agent activity dashboard
 # Shows worktree status, agent progress, and metrics
 
