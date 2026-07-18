@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Contract tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bash syntax
+        run: |
+          while IFS= read -r file; do
+            bash -n "$file"
+          done < <(git ls-files '*.sh' 'bin/orch')
+
+      - name: Provider contract tests
+        run: bash tests/run.sh
+
+      - name: JSON validation
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          files = subprocess.check_output(
+              ["git", "ls-files", "*.json"], text=True
+          ).splitlines()
+          for name in files:
+              with Path(name).open(encoding="utf-8") as handle:
+                  json.load(handle)
+          print(f"validated {len(files)} JSON files")
+          PY
+
+  shellcheck:
+    name: Supported-core ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Lint supported core
+        run: >-
+          shellcheck -x -P .
+          bin/orch
+          lib/orch/common.sh
+          lib/orch/timeout.sh
+          lib/orch/adapters/*.sh
+          tests/run.sh
+          examples/golden-path/verify.sh

@@ -1,0 +1,40 @@
+name: Provider compatibility
+description: Report a CLI version or adapter contract regression
+title: "adapter: "
+labels: [adapter, compatibility, needs-triage]
+body:
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider adapter
+      options: [Kiro CLI, Claude Code, Codex CLI, OpenCode, Hermes Agent]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Exact CLI version
+      placeholder: Output from the provider's version command
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: First-party contract source
+      description: Link to current official documentation, release notes, or source.
+    validations:
+      required: true
+  - type: textarea
+    id: failure
+    attributes:
+      label: Redacted failure
+      description: Include command shape, exit status, and stderr without credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed safe and unsafe mappings
+      description: Explain approval, sandbox, network, and trust implications separately.
+    validations:
+      required: true

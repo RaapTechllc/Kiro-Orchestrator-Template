@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible defect in the supported orchestration core
+title: "bug: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials or raw sensitive provider logs. Report security problems through SECURITY.md.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected outcome
+      description: What deterministic outcome should have occurred?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual outcome
+      description: Include exit status and redacted artifact names.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide the smallest command sequence and fixture that reproduces the defect.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Doctor output and environment
+      description: Paste redacted `bin/orch doctor`, OS, Bash version, and selected CLI version.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed secrets and proprietary code from this report.
+          required: true
+        - label: I confirmed this affects `bin/orch` or a path documented as supported.
+          required: true
