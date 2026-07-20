@@ -8,8 +8,8 @@ run_adapter() {
   unsafe=$4
   prompt=$(<"$prompt_file")
   args=(run --format json)
-  [ -n "$role" ] && args+=(--agent "$role")
   if [ "$unsafe" = true ]; then
+    [ -n "$role" ] && args+=(--agent "$role")
     args+=(--dangerously-skip-permissions)
   else
     export OPENCODE_PERMISSION='{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow"}'

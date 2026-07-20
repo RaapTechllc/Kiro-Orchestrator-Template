@@ -93,6 +93,18 @@ utc_now() {
   date -u '+%Y-%m-%dT%H:%M:%SZ'
 }
 
+default_run_root() {
+  state_home=${XDG_STATE_HOME:-}
+  case "$state_home" in
+    /*) ;;
+    *)
+      [ -n "${HOME:-}" ] || die 'HOME is required when XDG_STATE_HOME is not absolute'
+      state_home=$HOME/.local/state
+      ;;
+  esac
+  printf '%s/orch/runs\n' "$state_home"
+}
+
 new_run_dir() {
   root=$1
   prefix=${2:-run}
@@ -145,9 +157,8 @@ write_goal_prompt() {
     printf '%s\n' 'Completion requires external evidence from the orchestrator. Do not claim success from prose alone.'
     printf '%s\n' 'Make the smallest correct change, run relevant checks, and report concrete files and command results.'
     if [ -n "$feedback_file" ] && [ -f "$feedback_file" ]; then
-      printf '\n## Evidence from the previous iteration\n\n```text\n'
-      cat "$feedback_file"
-      printf '\n```\n'
+      printf '\n## Evidence from the previous iteration\n\n'
+      sed 's/^/    /' "$feedback_file"
     fi
   } > "$destination"
 }

@@ -12,7 +12,7 @@ The portable contract is a process boundary. It is intentionally smaller than an
 | Noninteractive run | Yes | Yes | Yes | Yes | Yes |
 | Raw stdout/stderr retention | Yes | Yes | Yes | Yes | Yes |
 | Structured raw output requested | No documented stream | JSON | JSONL | JSON events | No documented live stream |
-| Provider-native role flag | `--agent` | `--agent` | No | `--agent` | No |
+| Provider-native role flag | `--agent` | `--agent` | No | Unsafe mode only | No |
 | Outer timeout | Yes | Yes | Yes | Yes | Yes |
 | Explicit unsafe mapping | Yes | Yes | Yes | Yes | Yes |
 | Resume/session normalization | Not implemented | Not implemented | Not implemented | Not implemented | Not implemented |
@@ -58,10 +58,10 @@ The prompt is provided on stdin. Safe mode selects the workspace-write filesyste
 
 ```bash
 OPENCODE_PERMISSION='{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow"}' \
-  opencode run --format json [--agent NAME] "PROMPT"
+  opencode run --format json "PROMPT"
 ```
 
-Safe mode overrides ambient OpenCode permission defaults with a fail-closed file-tool policy. This matters because OpenCode's documented defaults are permissive for most tools. On the audited installation, `opencode run --help` exposes `--dangerously-skip-permissions`; `--unsafe` removes the restrictive environment override and adds that flag. First-party web documentation still describes `--auto`, so this mapping is version-sensitive and must be rechecked when OpenCode is upgraded. OpenCode permissions are tool policy, not an OS sandbox boundary.
+Safe mode overrides ambient OpenCode permission defaults with a fail-closed file-tool policy. Because native agents can override global permissions, `--role` remains goal-prompt context in safe mode; OpenCode receives `--agent NAME` only with `--unsafe`. On the audited installation, `opencode run --help` exposes `--dangerously-skip-permissions`; unsafe mode removes the restrictive environment override and adds that flag. First-party web documentation still describes `--auto`, so this mapping is version-sensitive and must be rechecked when OpenCode is upgraded. OpenCode permissions are tool policy, not an OS sandbox boundary.
 
 ### Hermes Agent
 

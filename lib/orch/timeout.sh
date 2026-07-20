@@ -22,7 +22,7 @@ signal_child_group() {
 }
 
 # Invoked indirectly by the INT/TERM/HUP traps below.
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 handle_signal() {
   signal_exit_code=$1
   [ -z "$watchdog_pid" ] || kill "$watchdog_pid" 2>/dev/null || true

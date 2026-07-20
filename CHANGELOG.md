@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed top-level fixed provider model IDs from Kiro agent configurations.
 - Enforced LF endings for shell automation.
 - Canonicalized working directories and run roots so relative paths survive provider directory changes without Codex double-resolution, including native path translation under Git Bash/Cygwin.
+- Moved default run ledgers to the user's XDG state directory and rendered retry feedback as indented evidence.
 
 ### Security
 
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timeout handling creates a provider process group, terminates ordinary descendants, and escalates/reaps on INT, TERM, or HUP, with a documented limit for deliberately detached sessions.
 - Watchdog timeout markers distinguish real timeouts from providers or verification commands that naturally return exit 124.
 - OpenCode unsafe mode follows the locally audited `--dangerously-skip-permissions` surface and documents upstream flag drift.
+- OpenCode safe mode keeps roles as prompt context instead of selecting native agents that can override the deny-by-default permission policy.
 - Zero-exit provider attempts are recorded as `unverified`, preventing provider-specific API errors hidden behind exit 0 from being mislabeled as completion.
 - Simulated, completion-token-controlled, destructive worktree, and broad Git automation entry points fail closed by default; active Kiro settings no longer load the legacy stop hook or allow `Bash(*)`.
 

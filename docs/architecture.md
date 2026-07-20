@@ -83,6 +83,8 @@ Single runs and loop iterations preserve:
 - bounded feedback supplied to the next attempt;
 - final `verified` or `exhausted` summary.
 
+The default ledger root is `${XDG_STATE_HOME:-$HOME/.local/state}/orch/runs`, outside the usual provider worktree. Retry feedback is rendered as indented evidence so model-emitted Markdown fences remain data.
+
 Every root created by the kernel has a versioned `.orch-run` marker. Standalone `orch verify` refuses arbitrary or symlinked directories and writes each attempt to a fresh child evidence directory instead of overwriting prior evidence. Line-oriented `*.env` artifacts are not sourced by the implementation and must be treated as data.
 
 ## Safety properties

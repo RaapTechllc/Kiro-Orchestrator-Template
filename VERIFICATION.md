@@ -1,6 +1,6 @@
 # Verification status
 
-**Last updated:** 2026-07-16
+**Last updated:** 2026-07-19
 **Scope:** provider-neutral beta kernel on `feat/multi-cli-orchestrator-v3`
 
 ## Verified locally
@@ -18,6 +18,9 @@
 | Provider wall-time is bounded | timeout fixture exits 124, writes a timeout marker, and records `timed_out` |
 | Natural exit 124 is not a timeout | run, loop, and verify require the watchdog marker before recording `timed_out` |
 | Relative paths remain stable | run roots and workdirs are canonicalized; Codex receives one absolute `-C` path |
+| Default ledgers stay outside the worktree | run and loop resolve their default root under XDG/user state and create no workspace `.orchestrator` directory |
+| OpenCode safe roles cannot widen permissions | safe mode keeps `--role` in the goal prompt and omits native `--agent`; unsafe mode contract-tests the native flag |
+| Retry feedback remains data | model-emitted Markdown fences and headings are indented before entering the next prompt |
 | Loop completion is external | loop retries until the configured shell gate exits 0 |
 | Loop exhaustion fails | bounded failing gate returns non-zero with `status=exhausted` |
 | Zero provider exit is not completion | attempt metadata records `unverified`; only an external gate can record `verified` |
@@ -42,7 +45,7 @@ shellcheck -x -P . bin/orch lib/orch/adapters/*.sh lib/orch/timeout.sh tests/run
 
 Provider tests use temporary stub binaries. They verify executable selection, argument boundaries, stdin/argument prompt transport, safe/unsafe mappings, raw output capture, status propagation, and artifacts without spending quota or granting tool access.
 
-This is strong evidence for the shell contract. Claude Code additionally completed the isolated golden path through the real adapter and external gate. That one run is not evidence that every vendor account, CLI version, model, authentication path, or permission policy will complete a real coding task. The GitHub Actions matrix is configured but has not yet executed remotely for this branch.
+This is strong evidence for the shell contract. Claude Code additionally completed the isolated golden path through the real adapter and external gate. That one run is not evidence that every vendor account, CLI version, model, authentication path, or permission policy will complete a real coding task. The GitHub Actions matrix is active for pull requests on Windows, Linux, and macOS.
 
 ## Environment probes during audit
 

@@ -17,7 +17,7 @@ PASS -> verified     budget exhausted -> failure
 ```
 
 > [!IMPORTANT]
-> The new `bin/orch` kernel is beta and locally contract-tested with provider stubs on Windows/Git Bash. CI is configured for Windows, Linux, and macOS but has not run remotely for this branch. Live externally verified golden paths passed on the first iteration with Claude Code, Codex 0.144.5, and Hermes Agent. OpenCode authentication failed during its live attempt, and Kiro was verified against current first-party documentation but was not installed locally. The older `.kiro/workflows/` collection is retained as an experimental pattern library unless explicitly marked otherwise.
+> The new `bin/orch` kernel is beta and contract-tested with provider stubs. CI covers Windows, Linux, and macOS. Live externally verified golden paths passed on the first iteration with Claude Code, Codex 0.144.5, and Hermes Agent. OpenCode authentication failed during its live attempt, and Kiro was verified against current first-party documentation but was not installed locally. The older `.kiro/workflows/` collection is retained as an experimental pattern library unless explicitly marked otherwise.
 
 ## Why this exists
 
@@ -75,7 +75,7 @@ The verification command is the authority. The model cannot override it.
 Expected terminal summary:
 
 ```text
-run: .orchestrator/runs/<run-id>
+run: /home/user/.local/state/orch/runs/<run-id>
 adapter: claude
 iterations: 2
 status: verified
@@ -107,7 +107,7 @@ Success means `status: verified` and `$demo_dir/result.txt` contains exactly `or
 | Kiro | `kiro-cli chat --no-interactive` | Text | `--agent` | Trust only read/write/grep/glob tools | `--trust-all-tools` |
 | Claude Code | `claude -p` | JSON | `--agent` | `dontAsk` plus explicit file-tool allowlist | `--dangerously-skip-permissions` |
 | Codex CLI | `codex exec --json` | JSONL | Goal prompt only | Explicit `workspace-write` sandbox | bypass approvals and sandbox |
-| OpenCode | `opencode run --format json` | JSON events | `--agent` | Explicit deny-by-default file-tool policy | locally observed `--dangerously-skip-permissions` |
+| OpenCode | `opencode run --format json` | JSON events | Unsafe mode only | Explicit deny-by-default file-tool policy; role remains prompt context | locally observed `--dangerously-skip-permissions` |
 | Hermes Agent | `hermes chat --quiet --query` | Text | Goal prompt only | Existing approval policy; no OS sandbox | `--yolo` |
 
 These are process adapters, not a fictional universal agent API. Tool approval is not an OS sandbox: Kiro and Hermes tools still run with the user's filesystem permissions, while Codex's workspace sandbox is a separate control. Sessions, subagents, hooks, network controls, JSON schemas, and worktree features differ by vendor. See [Adapter contract and caveats](docs/adapters.md).
@@ -158,7 +158,7 @@ Runs a trusted verification command against a marked orchestrator run and append
 
 ```bash
 ./bin/orch verify \
-  --run .orchestrator/runs/<run-id> \
+  --run "${XDG_STATE_HOME:-$HOME/.local/state}/orch/runs/<run-id>" \
   --workdir "$PWD" \
   --verify "bash tests/run.sh"
 ```
@@ -167,7 +167,7 @@ Runs a trusted verification command against a marked orchestrator run and append
 
 ## Run ledger
 
-By default, artifacts are written under `.orchestrator/runs/` and ignored by Git.
+By default, artifacts are written outside the provider worktree under `${XDG_STATE_HOME:-$HOME/.local/state}/orch/runs`. Pass `--run-root` to choose another location.
 
 ```text
 <run-id>/
@@ -189,7 +189,7 @@ By default, artifacts are written under `.orchestrator/runs/` and ignored by Git
 
 The `.env` suffix means line-oriented metadata; these files are evidence, **not shell scripts and must never be sourced**.
 
-Retry prompts contain bounded 80-line tail excerpts. `feedback.txt` identifies the full provider and verifier logs so truncation is explicit and complete evidence remains available in the ledger.
+Retry prompts contain bounded 80-line tail excerpts rendered as indented evidence, so model-emitted Markdown fences cannot escape into prompt instructions. `feedback.txt` identifies the full provider and verifier logs so truncation is explicit and complete evidence remains available in the ledger.
 
 ## Safety model
 

@@ -43,7 +43,7 @@ cmd_run() {
   task=''
   task_file=''
   workdir=$(pwd)
-  run_root='.orchestrator/runs'
+  run_root=''
   role=''
   unsafe=false
   dry_run=false
@@ -67,7 +67,7 @@ Usage: orch run (--task TEXT | --task-file FILE) [options]
 Options:
   --cli NAME       auto, kiro, claude, codex, opencode, or hermes
   --workdir DIR    working directory for the agent
-  --run-root DIR   artifact root (default: .orchestrator/runs)
+  --run-root DIR   artifact root (default: user state dir/orch/runs)
   --role NAME      provider-native agent/role where supported
   --timeout SEC    outer provider wall-time limit (default: 1800)
   --unsafe         enable provider-specific permission bypass
@@ -111,6 +111,7 @@ EOF
     return 0
   fi
 
+  [ -n "$run_root" ] || run_root=$(default_run_root) || return $?
   run_dir=$(new_run_dir "$run_root" run) || return $?
   prompt_file="$run_dir/prompt.md"
   stdout_file="$run_dir/stdout.log"
@@ -147,7 +148,7 @@ cmd_loop() {
   timeout_seconds=1800
   verify_timeout_seconds=600
   workdir=$(pwd)
-  run_root='.orchestrator/runs'
+  run_root=''
   role=''
   unsafe=false
   dry_run=false
@@ -177,7 +178,7 @@ Options:
   --timeout SEC       per-attempt provider timeout (default: 1800)
   --verify-timeout N  per-gate timeout (default: 600)
   --workdir DIR       working directory for the agent and evidence gate
-  --run-root DIR      artifact root (default: .orchestrator/runs)
+  --run-root DIR      artifact root (default: user state dir/orch/runs)
   --role NAME         provider-native agent/role where supported
   --unsafe            enable provider-specific permission bypass
   --dry-run           show the decision; do not invoke, verify, or write
@@ -229,6 +230,7 @@ EOF
     return 0
   fi
 
+  [ -n "$run_root" ] || run_root=$(default_run_root) || return $?
   loop_dir=$(new_run_dir "$run_root" loop) || return $?
   printf '%s\n' "$task" > "$loop_dir/task.md"
   loop_started=$(utc_now)
@@ -328,8 +330,9 @@ EOF
   require_single_line --run "$run_dir"
   [ -d "$run_dir" ] || die "run directory does not exist: $run_dir"
   [ ! -L "$run_dir" ] || die "run directory must not be a symlink: $run_dir"
-  [ -f "$run_dir/.orch-run" ] && [ ! -L "$run_dir/.orch-run" ] || \
+  if [ ! -f "$run_dir/.orch-run" ] || [ -L "$run_dir/.orch-run" ]; then
     die "not an orchestrator run directory: $run_dir"
+  fi
   IFS= read -r run_marker_schema < "$run_dir/.orch-run" || \
     die "invalid orchestrator run marker: $run_dir/.orch-run"
   [ "$run_marker_schema" = 'schema=1' ] || \
