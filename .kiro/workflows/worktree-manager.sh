@@ -2,6 +2,11 @@
 # worktree-manager.sh - Git worktree isolation for parallel agent development
 # Creates isolated workspaces for each agent, manages branches, validates, and merges
 
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: unsupported legacy worktree automation is disabled; use bin/orch and a reviewed PR workflow.' >&2
+  exit 2
+fi
+
 set -e
 
 #===============================================================================

@@ -2,6 +2,11 @@
 # Create a PR from current branch
 # Usage: create-pr.sh "PR Title" "PR Body" [base_branch]
 
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: legacy auto-stage/commit/push automation is disabled; review and commit changes explicitly.' >&2
+  exit 2
+fi
+
 TITLE="${1:-"Agent implementation"}"
 BODY="${2:-"Automated PR created by orchestrator agent."}"
 BRANCH=$(git branch --show-current)

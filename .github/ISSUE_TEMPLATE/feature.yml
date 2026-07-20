@@ -1,0 +1,33 @@
+name: Outcome-led feature
+description: Propose one bounded, verifiable orchestration outcome
+title: "feature: "
+labels: [enhancement, needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What operator outcome is currently impossible or unreliable?
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed contract
+      description: Define inputs, outputs, failure behavior, and deterministic acceptance evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: differences
+    attributes:
+      label: Provider differences
+      description: Which capabilities are shared, vendor-specific, experimental, or unknown?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Smallest useful scope
+      description: Name the narrow first increment that can ship with tests.
+    validations:
+      required: true

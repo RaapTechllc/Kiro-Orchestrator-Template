@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: unsupported legacy fusion simulation is disabled; migrate the workflow to bin/orch.' >&2
+  exit 2
+fi
 # fusion.sh - Enhanced F-Thread implementation for result consolidation
 # Runs multiple agents on same task, then fuses results for higher confidence
 

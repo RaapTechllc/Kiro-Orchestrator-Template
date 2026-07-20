@@ -121,8 +121,8 @@ agent-browser --session test1 open https://example.com
 ## Next Steps
 
 1. ✅ Install agent-browser
-2. 📖 Read [agent-browser-guide.md](.kiro/docs/agent-browser-guide.md)
-3. 💡 Check [agent-browser-examples.md](.kiro/examples/agent-browser-examples.md)
+2. 📖 Read [agent-browser-guide.md](agent-browser-guide.md)
+3. 💡 Check [agent-browser-examples.md](../examples/agent-browser-examples.md)
 4. 🧪 Test with agents: `kiro-cli --agent test-architect`
 
 ## Resources
@@ -133,4 +133,4 @@ agent-browser --session test1 open https://example.com
 
 ---
 
-**Need help?** Check the troubleshooting section in the [agent-browser guide](.kiro/docs/agent-browser-guide.md).
+**Need help?** Check the troubleshooting section in the [agent-browser guide](agent-browser-guide.md).

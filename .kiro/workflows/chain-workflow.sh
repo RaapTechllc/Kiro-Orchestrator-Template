@@ -2,6 +2,11 @@
 # chain-workflow.sh - Enhanced C-Thread implementation for phased execution
 # Breaks work into phases with checkpoints, validation, and resume capability
 
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: unsupported legacy chain simulation is disabled; migrate the workflow to bin/orch.' >&2
+  exit 2
+fi
+
 set -e
 
 #===============================================================================

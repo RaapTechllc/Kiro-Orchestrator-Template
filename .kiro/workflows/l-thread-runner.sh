@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: unsupported legacy L-thread simulation is disabled; migrate the workflow to bin/orch.' >&2
+  exit 2
+fi
 # l-thread-runner.sh - L-Thread implementation for extended autonomous execution
 # Enables hours/days-long agent runs with self-validation and stop hooks
 

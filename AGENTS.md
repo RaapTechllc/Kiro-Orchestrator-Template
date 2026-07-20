@@ -1,115 +1,62 @@
-# Agent Directory & Universal Directives
+# Agent instructions
 
-Quick reference for agent selection + directives that apply to ALL agents.
+This repository is a provider-neutral orchestration harness with Kiro-first configuration assets.
 
-## Quick Selection
+## Read first
 
-| Need | Agent | Command |
-|------|-------|---------|
-| Start a feature | `orchestrator` | `kiro-cli --agent orchestrator` |
-| Code review | `code-surgeon` | `kiro-cli --agent code-surgeon` |
-| Verify implementation | `verifier` | `kiro-cli --agent verifier` |
-| Write tests | `test-architect` | `kiro-cli --agent test-architect` |
-| CI/CD pipeline | `devops-automator` | `kiro-cli --agent devops-automator` |
-| Database work | `db-wizard` | `kiro-cli --agent db-wizard` |
-| UI/UX design | `frontend-designer` | `kiro-cli --agent frontend-designer` |
-| Documentation | `doc-smith` | `kiro-cli --agent doc-smith` |
-| Security audit | `security-specialist` | `kiro-cli --agent security-specialist` |
-| Code minimalism | `strands-agent` | `kiro-cli --agent strands-agent` |
+1. `CONTEXT.md` — domain vocabulary and boundaries
+2. `docs/architecture.md` — supported architecture
+3. `docs/adapters.md` — provider capability differences
+4. `VERIFICATION.md` — what is and is not verified
 
-All agents use **Opus 4.5** except `doc-smith` (Haiku 4.5).
+## Supported core
 
-## Agent Capabilities
+The maintained seam is `bin/orch` with:
 
-| Agent | Specialty | Key Commands |
-|-------|-----------|--------------|
-| `orchestrator` | Workflow coordination, task breakdown | `@plan-feature`, `@next-task` |
-| `code-surgeon` | Refactoring, security, bug fixes | `@code-review`, `@security-audit` |
-| `verifier` | Implementation verification, dual-agent review | `VERIFICATION: PASS/FAIL` |
-| `test-architect` | Test strategy, coverage | `@test-coverage` |
-| `devops-automator` | CI/CD, infrastructure | `@deploy-checklist` |
-| `db-wizard` | Schema, migrations, queries | `@db-optimize` |
-| `frontend-designer` | UI/UX, accessibility | `@a11y-audit`, `@ui-review` |
-| `strands-agent` | Deletion hierarchy, efficiency | Produces efficiency reports |
-
-See `.kiro/agents/README.md` for full documentation.
-
----
-
-## Universal Directives
-
-### Identity & Accountability
-
-You are a specialized agent within a multi-agent orchestration system. Your work is:
-- **Traceable**: Every change must be documented in PROGRESS.md
-- **Validated**: No completion without passing quality gates
-- **Isolated**: When working in parallel, use git worktrees
-
-### Execution Protocol
-
-**Before Starting:**
-1. Read your assigned task from PLAN.md or orchestrator instruction
-2. Verify you have the necessary context (check resources, steering files)
-3. If unclear, ASK - do not assume or guess
-
-**During Execution:**
-1. Stay in your lane - only use tools you're permitted
-2. Follow existing patterns in the codebase
-3. Commit logical units of work with clear messages
-4. Update PROGRESS.md after completing milestones
-
-**Before Completion:**
-1. Run validation: `npm run lint && npm run typecheck`
-2. Run tests if applicable: `npm run test:unit`
-3. Verify PROGRESS.md reflects your work
-4. Only then output: `<promise>DONE</promise>`
-
-### Quality Standards
-
-**Code Quality:**
-- No `any` types without explicit justification
-- No commented-out code
-- No console.log in production code
-- Error handling for all async operations
-- Input validation at boundaries
-
-**Security (Non-Negotiable):**
-- No secrets in code or commits
-- No SQL string concatenation
-- No dangerouslySetInnerHTML without sanitization
-- No eval() or Function() constructors
-- All user input sanitized
-
-### Communication Protocol
-
-**Status Updates:**
-```
-## [Agent Name] - [Timestamp]
-**Task**: Brief description
-**Status**: In Progress | Blocked | Complete
-**Changes**: List of files modified
-**Next**: What happens next (or blockers)
+```bash
+./bin/orch doctor
+./bin/orch run --help
+./bin/orch loop --help
+./bin/orch verify --help
 ```
 
-**Escalation:** If blocked for >5 minutes:
-- Missing context → Request from orchestrator
-- Permission issues → Document in PROGRESS.md, wait
-- Conflicting requirements → Stop and ask for clarification
+Treat other `.kiro/workflows/` scripts as legacy/experimental unless a document explicitly promotes one.
 
-### Anti-Patterns (Never Do These)
+## Non-negotiable rules
 
-1. **Scope Creep**: Don't "improve" code outside your task
-2. **Silent Failure**: Don't suppress errors without logging
-3. **Premature Optimization**: Don't optimize without measurements
-4. **Copy-Paste**: Don't duplicate - extract and reuse
-5. **Magic Numbers**: Don't use literals - define constants
+- Do not use model-generated prose or `<promise>DONE</promise>` as completion evidence.
+- A loop is complete only when its configured external verification command exits 0.
+- Keep provider-specific flags inside `lib/orch/adapters/`.
+- Do not flatten approval policy, filesystem sandboxing, network access, and tool trust into equivalent concepts.
+- Never add permission-bypass flags to a default path. They require explicit `--unsafe` behavior and tests.
+- Preserve raw stdout, stderr, exit status, timeout evidence, and the normalized prompt.
+- Use Bash arrays or stdin for prompts. Never construct provider commands with `eval`.
+- Do not auto-merge, hard-reset, force-push, or delete worktrees in the supported core.
+- Do not hard-code provider model IDs. Availability changes by product, account, and date.
+- Keep Kiro 2.x JSON separate from Kiro V3 permissions/tag configuration.
 
-### Completion Criteria
+## Change protocol
 
-Your task is NOT complete until:
-- [ ] All acceptance criteria from the task are met
-- [ ] Code compiles without errors
-- [ ] Linting and type checking pass
-- [ ] Tests pass (if applicable)
-- [ ] PROGRESS.md updated
-- [ ] No TODO comments left unresolved
+1. Add or change a behavior test in `tests/run.sh`.
+2. Observe the failure when implementing new behavior.
+3. Make the smallest adapter or kernel change.
+4. Run:
+
+```bash
+bash tests/run.sh
+bash -n bin/orch lib/orch/common.sh lib/orch/timeout.sh lib/orch/adapters/*.sh tests/run.sh
+shellcheck -x -P . bin/orch lib/orch/adapters/*.sh lib/orch/timeout.sh tests/run.sh
+```
+
+5. Validate every tracked JSON file.
+6. Update README, adapter docs, changelog, and verification claims when behavior changes.
+
+## Definition of done
+
+- Acceptance behavior is covered by tests.
+- The external gate passes.
+- New shell code passes ShellCheck.
+- JSON parses.
+- Unsafe mappings remain explicit.
+- Documentation distinguishes implemented, contract-tested, live-tested, experimental, and unknown behavior.
+- No secrets or generated `.orchestrator/` artifacts are staged.

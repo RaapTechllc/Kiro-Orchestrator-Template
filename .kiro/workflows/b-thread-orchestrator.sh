@@ -1,4 +1,8 @@
 #!/bin/bash
+if [ "${KIRO_ENABLE_UNSUPPORTED_LEGACY:-}" != "I_ACCEPT_THE_RISK" ]; then
+  printf '%s\n' 'ERROR: unsupported legacy B-thread orchestration is disabled; migrate the workflow to bin/orch.' >&2
+  exit 2
+fi
 # b-thread-orchestrator.sh - B-Thread meta-orchestration for nested thread compositions
 # Coordinates P-threads, F-threads, C-threads, and L-threads in complex workflows
 

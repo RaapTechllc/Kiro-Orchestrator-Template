@@ -1,36 +1,8 @@
 {
   "$schema": "https://kiro.dev/schemas/settings.json",
-  "comment": "Kiro CLI settings with Ralph loop hooks",
-  
-  "hooks": {
-    "Stop": [
-      {
-        "description": "Ralph loop stop hook - prevents premature exit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".kiro/hooks/ralph-stop.sh"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "description": "Log tool usage for debugging",
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command", 
-            "command": "echo \"[$(date -Iseconds)] Tool: $KIRO_TOOL_NAME\" >> .kiro/logs/tool-usage.log"
-          }
-        ]
-      }
-    ]
-  },
-  
+  "comment": "Conservative Kiro CLI settings for the supported provider-neutral harness. Legacy stop/tool hooks are intentionally disabled.",
   "permissions": {
     "allow": [
-      "Bash(*)",
       "Read(*)",
       "Write(.kiro/*)",
       "Write(src/*)",
@@ -41,10 +13,9 @@
     "deny": [
       "Write(.git/*)",
       "Write(.env*)",
-      "Bash(rm -rf *)"
+      "Bash(*)"
     ]
   },
-  
   "agents": {
     "default": "orchestrator",
     "available": [
@@ -55,10 +26,7 @@
       "frontend-designer"
     ]
   },
-  
   "environment": {
-    "NODE_ENV": "development",
-    "KIRO_MAX_ITERATIONS": "20",
-    "KIRO_COMPLETION_PHRASE": "<promise>DONE</promise>"
+    "NODE_ENV": "development"
   }
 }
