@@ -3,6 +3,8 @@
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+TEST_PYTHON=$(command -v python3 2>/dev/null || true)
+[ -n "$TEST_PYTHON" ] || TEST_PYTHON=$(command -v python 2>/dev/null || true)
 TEST_TMP_PARENT=${TEST_TMP:-${TMPDIR:-/tmp}}
 mkdir -p "$TEST_TMP_PARENT"
 TEST_TMP=$(mktemp -d "$TEST_TMP_PARENT/orch-tests.XXXXXX")
@@ -64,6 +66,64 @@ make_stub() {
 write_run_marker() {
   marker_dir=$1
   printf 'schema=1\ntype=test\n' > "$marker_dir/.orch-run"
+}
+
+python_bin() {
+  if [ -n "${TEST_PYTHON:-}" ]; then
+    printf '%s\n' "$TEST_PYTHON"
+    return 0
+  fi
+  printf '%s\n' 'python3 is required for MCP tests' >&2
+  return 1
+}
+
+mcp_call() {
+  "$(python_bin)" "$ROOT/tests/mcp_call.py" "$@"
+}
+
+json_get() {
+  json=$1
+  path=$2
+  printf '%s\n' "$json" | "$(python_bin)" -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    cur = data
+    for part in sys.argv[1].split("."):
+        cur = cur[int(part)] if isinstance(cur, list) else cur[part]
+    if isinstance(cur, (dict, list)):
+        json.dump(cur, sys.stdout)
+        sys.stdout.write("\n")
+    elif cur is None:
+        sys.stdout.write("\n")
+    elif isinstance(cur, bool):
+        sys.stdout.write("true\n" if cur else "false\n")
+    else:
+        sys.stdout.write(str(cur) + "\n")
+except Exception:
+    sys.stdout.write("\n")
+' "$path"
+}
+
+json_argv_has() {
+  json=$1
+  needle=$2
+  printf '%s\n' "$json" | "$(python_bin)" -c '
+import json, sys
+data = json.load(sys.stdin)
+sys.exit(0 if sys.argv[1] in (data.get("orch_argv") or []) else 1)
+' "$needle"
+}
+
+make_orch_proxy() {
+  make_stub orch-proxy 'printf "ARGV:" >> "$ORCH_TEST_ARGV_LOG"
+printf " <%s>" "$@" >> "$ORCH_TEST_ARGV_LOG"
+printf "\n" >> "$ORCH_TEST_ARGV_LOG"
+exec "$ORCH_REAL_BIN" "$@"'
+}
+
+mcp_path() {
+  printf '%s\n' "$TEST_TMP/bin:$(dirname "$TEST_PYTHON"):/usr/bin:/bin"
 }
 
 test_doctor_reports_supported_adapters() {
@@ -863,6 +923,253 @@ test_golden_path_gate_is_deterministic() {
 }
 
 test_golden_path_gate_is_deterministic || true
+
+test_mcp_python_parses() {
+  if ! "$(python_bin)" -m py_compile "$ROOT/lib/orch/mcp_server.py" "$ROOT/tests/mcp_call.py"; then
+    not_ok 'MCP python modules parse'
+    return
+  fi
+  help_output=$("$ROOT/bin/orch" mcp --help 2>&1) || {
+    not_ok 'orch mcp --help exits successfully'
+    return
+  }
+  assert_contains "$help_output" 'Does not replace the CLI' 'mcp help keeps the CLI as the supported seam' || return
+  assert_contains "$help_output" 'evidence gate' 'mcp help preserves the evidence-gate contract' || return
+  ok 'MCP server parses and mcp help stays a thin CLI wrapper'
+}
+
+test_mcp_python_parses || true
+
+test_mcp_lists_real_orch_tools() {
+  list_json=$(mcp_call --list 2>"$TEST_TMP/mcp-list.err") || {
+    cat "$TEST_TMP/mcp-list.err" >&2
+    not_ok 'MCP tools/list handshake succeeds'
+    return
+  }
+  assert_contains "$list_json" '"name": "orch_doctor"' 'MCP lists orch_doctor' || return
+  assert_contains "$list_json" '"name": "orch_run"' 'MCP lists orch_run' || return
+  assert_contains "$list_json" '"name": "orch_loop"' 'MCP lists orch_loop' || return
+  assert_contains "$list_json" '"name": "orch_verify"' 'MCP lists orch_verify' || return
+  init_json=$(mcp_call --initialize 2>"$TEST_TMP/mcp-init.err") || {
+    cat "$TEST_TMP/mcp-init.err" >&2
+    not_ok 'MCP initialize handshake succeeds'
+    return
+  }
+  assert_contains "$init_json" 'external verification command' 'initialize states the evidence-gate contract' || return
+  assert_contains "$init_json" '<promise>DONE</promise>' 'initialize rejects prose completion tokens' || return
+  ok 'MCP advertises doctor, run, loop, and verify without a dashboard'
+}
+
+test_mcp_lists_real_orch_tools || true
+
+test_mcp_doctor_maps_to_orch_doctor() {
+  argv_log="$TEST_TMP/mcp-doctor-argv.log"
+  make_stub kiro-cli 'printf "stub-kiro 1.0\\n"'
+  make_stub claude 'printf "stub-claude 1.0\\n"'
+  make_stub codex 'printf "stub-codex 1.0\\n"'
+  make_stub opencode 'printf "stub-opencode 1.0\\n"'
+  make_stub hermes 'printf "stub-hermes 1.0\\n"'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    mcp_call orch_doctor '{}' 2>"$TEST_TMP/mcp-doctor.err") || {
+    cat "$TEST_TMP/mcp-doctor.err" >&2
+    not_ok 'MCP doctor returns JSON'
+    return
+  }
+
+  argv_log_text=$(<"$argv_log")
+  assert_contains "$argv_log_text" 'ARGV: <doctor>' 'MCP doctor invokes the real orch doctor command' || return
+  [ "$(json_get "$json" command)" = doctor ] || { not_ok 'MCP doctor JSON names the doctor command'; return; }
+  [ "$(json_get "$json" ok)" = true ] || { not_ok 'MCP doctor reports ok when an adapter exists'; return; }
+  assert_contains "$json" '"name": "claude"' 'MCP doctor JSON includes Claude' || return
+  assert_contains "$json" '"name": "kiro"' 'MCP doctor JSON includes Kiro' || return
+  assert_contains "$json" '"status": "available"' 'MCP doctor JSON reports adapter availability' || return
+  [ "$(json_get "$json" prose_is_not_done)" = true ] || { not_ok 'MCP doctor keeps the prose-is-not-done contract'; return; }
+  ok 'MCP doctor maps to orch doctor and returns structured JSON'
+}
+
+test_mcp_doctor_maps_to_orch_doctor || true
+
+test_mcp_run_maps_to_orch_and_returns_ledger_json() {
+  argv_log="$TEST_TMP/mcp-run-argv.log"
+  run_root="$TEST_TMP/mcp-run-artifacts"
+  make_stub claude 'printf "provider ran\\n"'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    OPENAI_API_KEY='sk-test-secret-should-not-leak' \
+    mcp_call orch_run "$(printf '{"cli":"claude","task":"Write a tiny change","workdir":"%s","run_root":"%s"}' "$TEST_TMP" "$run_root")" \
+    2>"$TEST_TMP/mcp-run.err") || {
+    cat "$TEST_TMP/mcp-run.err" >&2
+    not_ok 'MCP run returns JSON'
+    return
+  }
+
+  argv_log_text=$(<"$argv_log")
+  assert_contains "$argv_log_text" 'ARGV: <run>' 'MCP run invokes the real orch run command' || return
+  json_argv_has "$json" run || { not_ok 'MCP run JSON records orch argv starting with run'; return; }
+  if json_argv_has "$json" --unsafe; then
+    not_ok 'MCP run omits --unsafe by default'
+    return
+  fi
+  if json_argv_has "$json" --verify; then
+    not_ok 'MCP run does not attach an evidence gate'
+    return
+  fi
+  [ "$(json_get "$json" command)" = run ] || { not_ok 'MCP run JSON names the run command'; return; }
+  [ "$(json_get "$json" status)" = unverified ] || { not_ok 'MCP run records unverified rather than verified'; return; }
+  run_dir=$(json_get "$json" run_dir)
+  run_id=$(json_get "$json" run_id)
+  if [ -z "$run_dir" ] || [ ! -d "$run_dir" ]; then
+    not_ok 'MCP run JSON includes an existing run_dir'
+    return
+  fi
+  [ "$run_id" = "$(basename "$run_dir")" ] || { not_ok 'MCP run_id matches the ledger directory name'; return; }
+  [ -f "$(json_get "$json" ledger.meta)" ] || { not_ok 'MCP run JSON points at meta.env without requiring hand parsing'; return; }
+  [ -f "$(json_get "$json" ledger.prompt)" ] || { not_ok 'MCP run JSON points at prompt.md'; return; }
+  [ "$(json_get "$json" meta.status)" = unverified ] || { not_ok 'MCP run parses meta.env as data'; return; }
+  assert_not_contains "$json" 'sk-test-secret-should-not-leak' 'MCP JSON does not echo secrets from the environment' || return
+  ok 'MCP run maps to orch run and returns run id, status, and ledger paths'
+}
+
+test_mcp_run_maps_to_orch_and_returns_ledger_json || true
+
+test_mcp_run_dry_run_is_write_never() {
+  argv_log="$TEST_TMP/mcp-dry-run-argv.log"
+  run_root="$TEST_TMP/mcp-dry-run-artifacts"
+  call_log="$TEST_TMP/mcp-dry-run-calls.log"
+  make_stub claude 'printf "called\\n" >> "$ORCH_TEST_CALL_LOG"'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    ORCH_TEST_CALL_LOG="$call_log" \
+    mcp_call orch_run "$(printf '{"cli":"claude","task":"Do not execute","workdir":"%s","run_root":"%s","dry_run":true}' "$TEST_TMP" "$run_root")" \
+    2>"$TEST_TMP/mcp-dry-run.err") || {
+    cat "$TEST_TMP/mcp-dry-run.err" >&2
+    not_ok 'MCP dry-run run returns JSON'
+    return
+  }
+
+  json_argv_has "$json" --dry-run || { not_ok 'MCP dry-run forwards --dry-run to orch'; return; }
+  [ "$(json_get "$json" dry_run)" = true ] || { not_ok 'MCP dry-run JSON reports dry_run'; return; }
+  [ ! -e "$call_log" ] || { not_ok 'MCP dry-run does not invoke the provider'; return; }
+  [ ! -e "$run_root" ] || { not_ok 'MCP dry-run creates no ledger'; return; }
+  ok 'MCP run dry-run maps to orch --dry-run without writes'
+}
+
+test_mcp_run_dry_run_is_write_never || true
+
+test_mcp_loop_returns_verified_only_after_gate() {
+  argv_log="$TEST_TMP/mcp-loop-argv.log"
+  run_root="$TEST_TMP/mcp-loop-artifacts"
+  verify_count="$TEST_TMP/mcp-loop-verify-count"
+  make_stub claude 'printf "iteration provider output\\n"'
+  make_stub verify-gate 'count=0
+[ ! -f "$ORCH_VERIFY_COUNT_FILE" ] || count=$(cat "$ORCH_VERIFY_COUNT_FILE")
+count=$((count + 1))
+printf "%s\\n" "$count" > "$ORCH_VERIFY_COUNT_FILE"
+if [ "$count" -lt 2 ]; then
+  printf "verification failed on iteration %s\\n" "$count"
+  exit 1
+fi
+printf "verification passed on iteration %s\\n" "$count"'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    ORCH_VERIFY_COUNT_FILE="$verify_count" \
+    mcp_call orch_loop "$(printf '{"cli":"claude","task":"Implement until the gate passes","verify":"verify-gate","max_iterations":3,"workdir":"%s","run_root":"%s"}' "$TEST_TMP" "$run_root")" \
+    2>"$TEST_TMP/mcp-loop.err") || {
+    cat "$TEST_TMP/mcp-loop.err" >&2
+    not_ok 'MCP loop returns JSON'
+    return
+  }
+
+  argv_log_text=$(<"$argv_log")
+  assert_contains "$argv_log_text" 'ARGV: <loop>' 'MCP loop invokes the real orch loop command' || return
+  json_argv_has "$json" --verify || { not_ok 'MCP loop forwards --verify to orch'; return; }
+  [ "$(json_get "$json" status)" = verified ] || { not_ok 'MCP loop reports verified only after the gate passes'; return; }
+  [ "$(json_get "$json" iterations)" = 2 ] || { not_ok 'MCP loop JSON reports the iteration count'; return; }
+  [ "$(json_get "$json" summary.status)" = verified ] || { not_ok 'MCP loop parses summary.env as data'; return; }
+  [ -f "$(json_get "$json" ledger.summary)" ] || { not_ok 'MCP loop JSON points at summary.env'; return; }
+  [ -d "$(json_get "$json" run_dir)" ] || { not_ok 'MCP loop JSON includes the loop ledger path'; return; }
+  ok 'MCP loop maps to orch loop and returns verified only after the external gate'
+}
+
+test_mcp_loop_returns_verified_only_after_gate || true
+
+test_mcp_verify_maps_to_orch_verify() {
+  argv_log="$TEST_TMP/mcp-verify-argv.log"
+  run_dir="$TEST_TMP/mcp-verify-run"
+  mkdir "$run_dir"
+  write_run_marker "$run_dir"
+  make_stub pass-check 'printf "standalone evidence passed\\n"'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    mcp_call orch_verify "$(printf '{"run":"%s","verify":"pass-check","workdir":"%s"}' "$run_dir" "$TEST_TMP")" \
+    2>"$TEST_TMP/mcp-verify.err") || {
+    cat "$TEST_TMP/mcp-verify.err" >&2
+    not_ok 'MCP verify returns JSON'
+    return
+  }
+
+  argv_log_text=$(<"$argv_log")
+  assert_contains "$argv_log_text" 'ARGV: <verify>' 'MCP verify invokes the real orch verify command' || return
+  [ "$(json_get "$json" command)" = verify ] || { not_ok 'MCP verify JSON names the verify command'; return; }
+  [ "$(json_get "$json" status)" = passed ] || { not_ok 'MCP verify reports passed from the gate'; return; }
+  evidence_dir=$(json_get "$json" evidence_dir)
+  if [ -z "$evidence_dir" ] || [ ! -d "$evidence_dir" ]; then
+    not_ok 'MCP verify JSON includes the evidence directory'
+    return
+  fi
+  [ "$(json_get "$json" verification.status)" = passed ] || { not_ok 'MCP verify parses verify.env as data'; return; }
+  [ -f "$(json_get "$json" evidence.verify_env)" ] || { not_ok 'MCP verify JSON points at verify.env'; return; }
+  ok 'MCP verify maps to orch verify and returns structured evidence paths'
+}
+
+test_mcp_verify_maps_to_orch_verify || true
+
+test_mcp_reads_env_artifacts_as_data() {
+  run_dir="$TEST_TMP/mcp-env-data-run"
+  mkdir "$run_dir"
+  write_run_marker "$run_dir"
+  printf 'status=unverified\npwn=$(touch %s/mcp-env-pwned)\n' "$TEST_TMP" > "$run_dir/meta.env"
+  make_stub claude 'printf "unused\\n"'
+
+  json=$(PATH="$(mcp_path)" \
+    mcp_call orch_verify "$(printf '{"run":"%s","verify":"true","workdir":"%s","dry_run":true}' "$run_dir" "$TEST_TMP")" \
+    2>"$TEST_TMP/mcp-env-data.err") || {
+    cat "$TEST_TMP/mcp-env-data.err" >&2
+    not_ok 'MCP verify dry-run returns JSON while reading ledger metadata'
+    return
+  }
+
+  [ ! -e "$TEST_TMP/mcp-env-pwned" ] || { not_ok 'MCP does not source ledger .env files as shell'; return; }
+  [ "$(json_get "$json" meta.pwn)" = "$(printf '$(touch %s/mcp-env-pwned)' "$TEST_TMP")" ] || {
+    not_ok 'MCP returns env values as literal data'
+    return
+  }
+  json_argv_has "$json" --dry-run || { not_ok 'MCP verify dry-run forwards --dry-run'; return; }
+  ok 'MCP treats ledger .env files as data rather than shell'
+}
+
+test_mcp_reads_env_artifacts_as_data || true
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

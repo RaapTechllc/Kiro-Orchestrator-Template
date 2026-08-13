@@ -15,6 +15,7 @@ Commands:
   run                    Execute one normalized goal
   loop                   Iterate until deterministic verification passes
   verify                 Re-run verification for a recorded run
+  mcp                    Speak MCP JSON-RPC on stdio; wraps the commands above
   help                    Show this help
 EOF
 }
@@ -374,12 +375,32 @@ EOF
   return "$verification_exit"
 }
 
+cmd_mcp() {
+  case "${1:-}" in
+    -h|--help)
+      cat <<'EOF'
+Usage: orch mcp
+
+Speak MCP JSON-RPC on stdio as a thin wrapper around doctor, run, loop, and verify.
+Returns structured JSON (run id, status, ledger paths). Does not replace the CLI.
+Completion still requires the external evidence gate; model prose is not done.
+EOF
+      return 0
+      ;;
+  esac
+  python_bin=$(command -v python3 2>/dev/null || true)
+  [ -n "$python_bin" ] || python_bin=$(command -v python 2>/dev/null || true)
+  [ -n "$python_bin" ] || die 'python3 is required for orch mcp'
+  PYTHONUNBUFFERED=1 exec "$python_bin" "$ORCH_ROOT/lib/orch/mcp_server.py" "$@"
+}
+
 command_name=${1:-help}
 case "$command_name" in
   doctor) shift; cmd_doctor "$@" ;;
   run) shift; cmd_run "$@" ;;
   loop) shift; cmd_loop "$@" ;;
   verify) shift; cmd_verify "$@" ;;
+  mcp) shift; cmd_mcp "$@" ;;
   help|-h|--help) usage ;;
   *)
     usage >&2

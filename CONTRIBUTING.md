@@ -24,6 +24,8 @@ bash -n bin/orch lib/orch/common.sh lib/orch/timeout.sh lib/orch/adapters/*.sh t
 shellcheck -x -P . bin/orch lib/orch/common.sh lib/orch/timeout.sh lib/orch/adapters/*.sh tests/run.sh
 ```
 
+MCP wrapper tests require Python 3. They invoke `./bin/orch mcp` and assert that tool calls map to the real CLI.
+
 ## Pull request rules
 
 1. Keep provider-specific flags inside `lib/orch/adapters/`.
