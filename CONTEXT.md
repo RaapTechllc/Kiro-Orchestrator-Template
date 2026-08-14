@@ -13,6 +13,7 @@ The repository is a **portable coding-agent orchestration harness**. Kiro remain
 - **Safe mode** — the default adapter posture: no provider-specific permission-bypass flag is added.
 - **Unsafe mode** — an explicit operator opt-in that enables a provider's unattended permission-bypass flag where available.
 - **Legacy pack** — the existing `.kiro/` agents, prompts, steering, and workflow scripts retained for Kiro compatibility while the portable kernel becomes the primary interface.
+- **MCP skin** — optional stdio JSON-RPC wrapper (`orch mcp`) over the same CLI commands. It returns structured run metadata; it is not a dashboard and not a source of completion truth.
 
 ## Source of truth
 

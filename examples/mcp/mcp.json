@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "orch": {
+      "command": "bash",
+      "args": ["bin/orch", "mcp"]
+    }
+  }
+}

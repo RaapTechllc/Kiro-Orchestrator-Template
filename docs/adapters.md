@@ -35,6 +35,7 @@ kiro-cli chat --no-interactive [--agent NAME] --trust-tools=read,write,grep,glob
 - `--unsafe` replaces the selective trust list with `--trust-all-tools`.
 - Kiro tool trust controls approval, not OS isolation. Trusted tools run with the operator's filesystem permissions.
 - If a workflow requires MCP servers, operators should validate startup separately; the portable contract does not currently expose `--require-mcp-startup`.
+- `orch mcp` is a thin stdio wrapper over this repository's CLI. It is not Kiro's `--require-mcp-startup` and does not add provider MCP capabilities.
 - Kiro V3 is early access and has different permission/tag/hook schemas. It is not claimed compatible with the included JSON agents.
 
 ### Claude Code

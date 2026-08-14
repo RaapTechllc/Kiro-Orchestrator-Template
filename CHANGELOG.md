@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture, adapter, migration, research, roadmap, security, contribution, and community-health documentation.
 - Deterministic golden-path fixture.
 - Live externally verified golden-path evidence for Claude Code, current Codex CLI, and Hermes Agent.
+- Stdio MCP wrapper (`orch mcp`) that invokes the real `doctor`, `run`, `loop`, and `verify` commands and returns structured JSON (run id, status, ledger paths) without treating prose as done.
+- Windows/Git Bash MCP handshake: probe a real Python 3 interpreter, emit UTF-8 JSON-RPC on binary stdio, skip Store/banner lines, pin Git Bash instead of System32/WSL `bash.exe`, translate Git Bash ledger paths for Windows Python I/O, set `isError` on failed orch calls, and omit `cli_stderr` from the envelope.
 
 ### Changed
 

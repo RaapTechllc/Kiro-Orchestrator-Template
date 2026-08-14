@@ -7,6 +7,7 @@ The supported product is a small Bash process orchestrator. It owns selection, p
 ```text
 bin/orch
   |
+  +-- mcp: stdio JSON-RPC skin over the same doctor/run/loop/verify commands
   +-- common.sh: validation, selection, run ledger, evidence capture
   +-- timeout.sh: portable outer watchdog
   +-- adapters/
@@ -87,9 +88,14 @@ The default ledger root is `${XDG_STATE_HOME:-$HOME/.local/state}/orch/runs`, ou
 
 Every root created by the kernel has a versioned `.orch-run` marker. Standalone `orch verify` refuses arbitrary or symlinked directories and writes each attempt to a fresh child evidence directory instead of overwriting prior evidence. Line-oriented `*.env` artifacts are not sourced by the implementation and must be treated as data.
 
+## Agent-first MCP skin
+
+`orch mcp` speaks MCP JSON-RPC on stdio and invokes the same `doctor`, `run`, `loop`, and `verify` commands. It returns structured JSON (run id, status, ledger paths) so a third-party agent does not have to parse `summary.env` by hand. It does not replace the CLI, does not add a dashboard, and does not decide completion. See [docs/mcp.md](mcp.md).
+
 ## Safety properties
 
 - no `eval` in provider execution;
+- MCP wrapper invokes `bin/orch` through argv arrays and reads ledger `.env` files as data;
 - no implicit provider permission bypass;
 - no writes or provider invocation in dry-run mode;
 - positive integer iteration/time budgets;

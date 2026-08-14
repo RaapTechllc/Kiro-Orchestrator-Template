@@ -165,6 +165,29 @@ Runs a trusted verification command against a marked orchestrator run and append
 
 `--verify` is intentionally a shell command supplied by the repository operator. Never pass untrusted user input into it.
 
+### `mcp`
+
+Stdio MCP wrapper over the same four commands. Third-party agents get structured JSON (run id, status, ledger paths) instead of scraping `summary.env`. This does not replace the CLI and does not decide completion.
+
+```bash
+./bin/orch mcp --help
+```
+
+Example client config:
+
+```json
+{
+  "mcpServers": {
+    "orch": {
+      "command": "bash",
+      "args": ["/absolute/path/to/bin/orch", "mcp"]
+    }
+  }
+}
+```
+
+See [Agent-first MCP wrapper](docs/mcp.md).
+
 ## Run ledger
 
 By default, artifacts are written outside the provider worktree under `${XDG_STATE_HOME:-$HOME/.local/state}/orch/runs`. Pass `--run-root` to choose another location.
@@ -187,7 +210,7 @@ By default, artifacts are written outside the provider worktree under `${XDG_STA
 └── summary.env
 ```
 
-The `.env` suffix means line-oriented metadata; these files are evidence, **not shell scripts and must never be sourced**.
+The `.env` suffix means line-oriented metadata; these files are evidence, **not shell scripts and must never be sourced**. Agents that speak MCP can read the same fields from `orch mcp` JSON instead of parsing the files by hand.
 
 Retry prompts contain bounded 80-line tail excerpts rendered as indented evidence, so model-emitted Markdown fences cannot escape into prompt instructions. `feedback.txt` identifies the full provider and verifier logs so truncation is explicit and complete evidence remains available in the ledger.
 
@@ -220,6 +243,7 @@ Other legacy workflows are retained for research and migration, not included in 
 
 - [Architecture](docs/architecture.md)
 - [Adapter contract](docs/adapters.md)
+- [Agent-first MCP wrapper](docs/mcp.md)
 - [Domain vocabulary](CONTEXT.md)
 - [Architecture decision record](docs/adr/0001-provider-neutral-execution.md)
 - [Kiro CLI status, July 2026](docs/research/kiro-cli-status-2026-07.md)

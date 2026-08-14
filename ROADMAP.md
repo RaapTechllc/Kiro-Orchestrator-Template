@@ -10,6 +10,7 @@ The project ships narrow verified increments. Items below are plans, not current
 - [x] Iteration budgets and outer process timeouts
 - [x] External evidence gate with failure feedback
 - [x] Raw run ledger and contract tests
+- [x] Thin stdio MCP wrapper over `doctor`, `run`, `loop`, and `verify`
 - [x] Kiro 2.x research and stale flagship-runner removal
 - [ ] Cross-platform CI green on Windows, Linux, and macOS
 - [ ] Authenticated golden-path runs recorded for declared providers

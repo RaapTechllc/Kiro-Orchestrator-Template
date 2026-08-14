@@ -18,7 +18,10 @@ The maintained seam is `bin/orch` with:
 ./bin/orch run --help
 ./bin/orch loop --help
 ./bin/orch verify --help
+./bin/orch mcp --help
 ```
+
+`orch mcp` is a stdio MCP wrapper over those four commands. It does not replace the CLI and it is not completion evidence.
 
 Treat other `.kiro/workflows/` scripts as legacy/experimental unless a document explicitly promotes one.
 

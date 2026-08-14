@@ -38,6 +38,10 @@ out/
 # Test coverage (generated)
 coverage/
 
+# Python bytecode from the MCP wrapper
+__pycache__/
+*.py[cod]
+
 # Temporary files
 *.tmp
 *.temp

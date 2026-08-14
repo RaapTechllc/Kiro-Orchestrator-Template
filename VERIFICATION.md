@@ -1,6 +1,6 @@
 # Verification status
 
-**Last updated:** 2026-07-19
+**Last updated:** 2026-08-13
 **Scope:** provider-neutral beta kernel on `feat/multi-cli-orchestrator-v3`
 
 ## Verified locally
@@ -27,8 +27,20 @@
 | Verification is reusable and append-only | `orch verify` requires a schema marker, rejects arbitrary/symlinked directories, and creates a unique evidence child |
 | Legacy hazards fail closed | behavior test invokes ten simulated, token-controlled, or destructive entry points and requires default refusal |
 | Run artifacts are private by default | adapter stubs observe inherited process `umask 0077` |
-| Current contract suite passes | 24 tests pass on Windows/Git Bash |
+| Current contract suite passes | contract tests including the MCP wrapper pass on the supported Bash hosts |
 | New supported shell is lint-clean | focused ShellCheck exits 0 |
+| MCP stdio wrapper maps to real CLI commands | behavior tests invoke `orch mcp` tools and require `orch_argv` plus artifacts from `bin/orch` |
+| MCP returns structured run JSON | tests read run id, status, and ledger paths from JSON rather than sourcing `summary.env` |
+| MCP run cannot self-certify | MCP `orch_run` returns `unverified` and omits `--verify` / `--unsafe` by default |
+| MCP loop still requires the gate | MCP `orch_loop` reports `verified` only after the external command exits 0 |
+| MCP does not source ledger env files | a `$(touch …)` value in `meta.env` remains literal data |
+| MCP JSON does not echo secrets | a planted API key in the environment is absent from the tool result |
+| MCP handshake works on Git Bash | client skips blank/banner lines; server writes UTF-8 JSON-RPC and probes python3/python/py |
+| MCP client refuses WSL bash | System32/Sysnative `bash.exe` is classified as WSL; Git Bash is not |
+| MCP invoke_orch uses Git Bash on Windows | `ORCH_BASH` / Git `bash.exe` is used instead of System32 WSL bash |
+| MCP reads Git Bash ledger paths on Windows | `/d/a/_temp/...` is translated for Windows Python; JSON keeps the display path |
+| MCP isError follows orch status | `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero |
+| MCP omits cli_stderr | failed-loop raw protocol result has no `cli_stderr` field |
 | Claude golden path works live | authenticated Claude Code created exact fixture output; external gate passed on iteration 1 |
 | Codex golden path works live on a current CLI | isolated Codex 0.144.5 created exact fixture output; external gate passed on iteration 1 |
 | Hermes golden path works live | authenticated Hermes created exact fixture output; external gate passed on iteration 1 |
@@ -68,6 +80,7 @@ See `docs/adapters.md` for observed version evidence and `docs/research/` for ci
 - Deliberately detached descendants that create a new process group/session after provider launch
 - Repository-wide ShellCheck cleanliness for legacy workflows
 - Real deployment or package installation into another repository
+- Authenticated third-party agent using `orch mcp` against a live provider CLI
 
 ## Legacy status
 
