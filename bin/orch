@@ -375,6 +375,32 @@ EOF
   return "$verification_exit"
 }
 
+resolve_mcp_python() {
+  if [ -n "${ORCH_PYTHON:-}" ]; then
+    printf '%s\n' "$ORCH_PYTHON"
+    return 0
+  fi
+  for name in python3 python py; do
+    resolved=$(command -v "$name" 2>/dev/null || true)
+    [ -n "$resolved" ] || continue
+    case "$resolved" in
+      *WindowsApps*|*windowsapps*) continue ;;
+    esac
+    if [ "$name" = py ]; then
+      if py -3 -c 'import sys; raise SystemExit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
+        printf '%s\n' 'py -3'
+        return 0
+      fi
+      continue
+    fi
+    if "$resolved" -c 'import sys; raise SystemExit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  done
+  return 1
+}
+
 cmd_mcp() {
   case "${1:-}" in
     -h|--help)
@@ -388,10 +414,26 @@ EOF
       return 0
       ;;
   esac
-  python_bin=$(command -v python3 2>/dev/null || true)
-  [ -n "$python_bin" ] || python_bin=$(command -v python 2>/dev/null || true)
-  [ -n "$python_bin" ] || die 'python3 is required for orch mcp'
-  PYTHONUNBUFFERED=1 exec "$python_bin" "$ORCH_ROOT/lib/orch/mcp_server.py" "$@"
+  python_spec=$(resolve_mcp_python) || die 'python3 is required for orch mcp'
+  python_bin=$python_spec
+  python_launcher_arg=''
+  case "$python_spec" in
+    'py -3')
+      python_bin=py
+      python_launcher_arg=-3
+      ;;
+  esac
+  mcp_script="$ORCH_ROOT/lib/orch/mcp_server.py"
+  if command -v cygpath >/dev/null 2>&1; then
+    mcp_script=$(cygpath -w "$mcp_script")
+  fi
+  # Native Windows Python plus Git Bash pipes need -u and UTF-8 mode.
+  if [ -n "$python_launcher_arg" ]; then
+    exec env PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \
+      "$python_bin" "$python_launcher_arg" -u "$mcp_script" "$@"
+  fi
+  exec env PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8 PYTHONUTF8=1 \
+    "$python_bin" -u "$mcp_script" "$@"
 }
 
 command_name=${1:-help}

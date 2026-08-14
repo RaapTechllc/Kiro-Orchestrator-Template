@@ -1171,5 +1171,49 @@ test_mcp_reads_env_artifacts_as_data() {
 
 test_mcp_reads_env_artifacts_as_data || true
 
+test_mcp_client_skips_stdio_banners() {
+  output=$("$(python_bin)" - "$ROOT/tests/mcp_call.py" <<'PY'
+import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location("mcp_call", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+lines = [
+    b"\r\n",
+    b"Python was not found; run without arguments to install from the Microsoft Store\n",
+    b'{"jsonrpc":"2.0","id":1,"result":{"ok":true}}\n',
+]
+iterator = iter(lines)
+message = mod.next_jsonrpc_line(lambda: next(iterator, b""))
+if message.get("id") != 1:
+    raise SystemExit("did not parse the first JSON-RPC object after banners")
+print("skipped-banners")
+PY
+  ) || {
+    printf '%s\n' "$output" >&2
+    not_ok 'MCP client skips Windows/Git Bash stdio banners'
+    return
+  }
+  assert_contains "$output" 'skipped-banners' 'MCP client reports that banners were skipped' || return
+  ok 'MCP client skips blank lines and Windows Python banners before JSON-RPC'
+}
+
+test_mcp_client_skips_stdio_banners || true
+
+test_mcp_marks_failed_orch_as_error_without_stderr_leak() {
+  raw=$(mcp_call --raw orch_loop '{"task":"cannot self-certify"}' 2>"$TEST_TMP/mcp-iserror.err") || {
+    cat "$TEST_TMP/mcp-iserror.err" >&2
+    not_ok 'MCP raw loop without verify returns a protocol result'
+    return
+  }
+  assert_contains "$raw" '"isError": true' 'MCP sets isError when orch exits non-zero' || return
+  assert_contains "$raw" '"ok": false' 'failed orch payload keeps ok=false' || return
+  assert_not_contains "$raw" '"cli_stderr"' 'MCP JSON envelope omits cli_stderr' || return
+  ok 'MCP marks failed orch calls as isError and omits cli_stderr'
+}
+
+test_mcp_marks_failed_orch_as_error_without_stderr_leak || true
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

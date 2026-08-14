@@ -110,18 +110,48 @@ def orch_bin() -> str:
     return os.path.join(orch_root(), "bin", "orch")
 
 
+def configure_stdio() -> None:
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    os.environ.setdefault("PYTHONUTF8", "1")
+    for stream, write_through in ((sys.stdin, False), (sys.stdout, True)):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        kwargs = {"encoding": "utf-8", "errors": "replace", "newline": "\n"}
+        if write_through:
+            kwargs["write_through"] = True
+        try:
+            reconfigure(**kwargs)
+        except (OSError, ValueError, TypeError):
+            continue
+
+
 def write_message(message: Mapping[str, Any]) -> None:
-    sys.stdout.write(json.dumps(message, separators=(",", ":"), ensure_ascii=False) + "\n")
+    payload = json.dumps(message, separators=(",", ":"), ensure_ascii=True) + "\n"
+    raw = payload.encode("utf-8")
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is not None:
+        buffer.write(raw)
+        buffer.flush()
+        return
+    sys.stdout.write(payload)
     sys.stdout.flush()
 
 
 def read_message() -> Optional[Dict[str, Any]]:
+    buffer = getattr(sys.stdin, "buffer", None)
     while True:
-        line = sys.stdin.readline()
-        if line == "":
-            return None
-        line = line.strip()
-        if not line:
+        if buffer is not None:
+            raw = buffer.readline()
+            if raw == b"":
+                return None
+            line = raw.decode("utf-8-sig", errors="replace").strip()
+        else:
+            line = sys.stdin.readline()
+            if line == "":
+                return None
+            line = line.strip()
+        if not line or not line.startswith("{"):
             continue
         return json.loads(line)
 
@@ -357,8 +387,6 @@ def envelope(command: str, invoked: Mapping[str, Any], extra: Mapping[str, Any])
     }
     if invoked.get("error"):
         payload["error"] = invoked["error"]
-    if invoked.get("cli_stderr"):
-        payload["cli_stderr"] = invoked["cli_stderr"]
     payload.update(extra)
     return payload
 
@@ -547,6 +575,15 @@ def tools_list() -> List[Dict[str, Any]]:
     return listed
 
 
+def payload_is_error(payload: Mapping[str, Any], flagged: bool) -> bool:
+    if flagged:
+        return True
+    if payload.get("ok") is False:
+        return True
+    exit_code = payload.get("exit_code")
+    return isinstance(exit_code, int) and exit_code != 0
+
+
 def call_tool(name: str, arguments: Mapping[str, Any]) -> Dict[str, Any]:
     spec = TOOLS.get(name)
     if spec is None:
@@ -558,7 +595,7 @@ def call_tool(name: str, arguments: Mapping[str, Any]) -> Dict[str, Any]:
         payload, is_error = spec["handler"](arguments)
     except ValueError as exc:
         return tool_result(error_payload(name.replace("orch_", "", 1), str(exc)), is_error=True)
-    return tool_result(payload, is_error=is_error)
+    return tool_result(payload, is_error=payload_is_error(payload, is_error))
 
 
 def handle_request(message: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
@@ -629,6 +666,7 @@ def serve_stdio() -> int:
 
 
 def main(argv: Sequence[str]) -> int:
+    configure_stdio()
     if argv and argv[0] in ("-h", "--help"):
         sys.stdout.write(HELP)
         return 0

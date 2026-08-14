@@ -67,7 +67,9 @@ Successful tool results include `structuredContent` and the same object as text 
 }
 ```
 
-`run` responses use `status=unverified` on a zero provider exit. Ledger `*.env` files are parsed as `key=value` data and are never sourced as shell. Provider stdout/stderr stay in the ledger; the MCP result returns paths, not log bodies or environment secrets.
+`run` responses use `status=unverified` on a zero provider exit. Ledger `*.env` files are parsed as `key=value` data and are never sourced as shell. Provider stdout/stderr stay in the ledger; the MCP result returns paths, not log bodies or environment secrets. `cli_stderr` is omitted from the envelope so adapter tokens cannot leak. `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero.
+
+On Windows/Git Bash, `orch mcp` probes `python3`, `python`, and `py -3`, skips Microsoft Store aliases, converts the server path with `cygpath -w` when available, and writes one UTF-8 JSON-RPC line per message. Set `ORCH_PYTHON` to pin the interpreter.
 
 ## Not in scope
 

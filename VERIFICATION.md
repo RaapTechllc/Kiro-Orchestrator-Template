@@ -35,6 +35,9 @@
 | MCP loop still requires the gate | MCP `orch_loop` reports `verified` only after the external command exits 0 |
 | MCP does not source ledger env files | a `$(touch …)` value in `meta.env` remains literal data |
 | MCP JSON does not echo secrets | a planted API key in the environment is absent from the tool result |
+| MCP handshake works on Git Bash | client skips blank/banner lines; server writes UTF-8 JSON-RPC and probes python3/python/py |
+| MCP isError follows orch status | `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero |
+| MCP omits cli_stderr | failed-loop raw protocol result has no `cli_stderr` field |
 | Claude golden path works live | authenticated Claude Code created exact fixture output; external gate passed on iteration 1 |
 | Codex golden path works live on a current CLI | isolated Codex 0.144.5 created exact fixture output; external gate passed on iteration 1 |
 | Hermes golden path works live | authenticated Hermes created exact fixture output; external gate passed on iteration 1 |

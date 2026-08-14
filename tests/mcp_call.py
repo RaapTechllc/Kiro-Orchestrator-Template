@@ -7,7 +7,9 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Union
+
+Readline = Callable[[], Union[bytes, str]]
 
 
 def repo_root() -> str:
@@ -18,36 +20,74 @@ def orch_mcp_cmd() -> List[str]:
     return ["bash", os.path.join(repo_root(), "bin", "orch"), "mcp"]
 
 
+def next_jsonrpc_line(readline: Readline) -> Dict[str, Any]:
+    skipped = []
+    while True:
+        raw = readline()
+        if raw in ("", b""):
+            raise RuntimeError(
+                "MCP server closed stdout early; skipped non-JSON lines=%s" % skipped
+            )
+        if isinstance(raw, bytes):
+            line = raw.decode("utf-8-sig", errors="replace").strip()
+        else:
+            line = raw.strip()
+        if not line:
+            skipped.append("<blank>")
+            continue
+        if not line.startswith("{"):
+            skipped.append(line[:80])
+            continue
+        try:
+            parsed = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("invalid MCP JSON line %r: %s" % (line[:200], exc)) from exc
+        if not isinstance(parsed, dict):
+            skipped.append(line[:80])
+            continue
+        return parsed
+
+
 class McpClient:
     def __init__(self) -> None:
+        env = os.environ.copy()
+        env.setdefault("ORCH_PYTHON", sys.executable)
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+        env["PYTHONUNBUFFERED"] = "1"
         self.proc = subprocess.Popen(
             orch_mcp_cmd(),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+            env=env,
         )
         assert self.proc.stdin is not None
         assert self.proc.stdout is not None
 
     def send(self, message: Dict[str, Any]) -> None:
         assert self.proc.stdin is not None
-        self.proc.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
+        raw = (json.dumps(message, separators=(",", ":"), ensure_ascii=True) + "\n").encode("utf-8")
+        self.proc.stdin.write(raw)
         self.proc.stdin.flush()
 
     def recv(self) -> Dict[str, Any]:
         assert self.proc.stdout is not None
-        line = self.proc.stdout.readline()
-        if line == "":
-            stderr = self.proc.stderr.read() if self.proc.stderr else ""
-            raise RuntimeError("MCP server closed stdout early: %s" % stderr)
-        return json.loads(line)
+        try:
+            return next_jsonrpc_line(self.proc.stdout.readline)
+        except RuntimeError as exc:
+            stderr = b""
+            if self.proc.stderr:
+                stderr = self.proc.stderr.read() or b""
+            detail = stderr.decode("utf-8", errors="replace")
+            raise RuntimeError("%s; stderr=%s" % (exc, detail)) from exc
 
     def close(self) -> str:
         if self.proc.stdin:
-            self.proc.stdin.close()
+            try:
+                self.proc.stdin.close()
+            except OSError:
+                pass
         try:
             self.proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -55,7 +95,8 @@ class McpClient:
             self.proc.wait()
         stderr = ""
         if self.proc.stderr:
-            stderr = self.proc.stderr.read()
+            raw = self.proc.stderr.read() or b""
+            stderr = raw.decode("utf-8", errors="replace")
         return stderr
 
     def initialize(self) -> Dict[str, Any]:
@@ -106,7 +147,7 @@ def payload_from_call(response: Dict[str, Any]) -> Dict[str, Any]:
 
 def main(argv: List[str]) -> int:
     if not argv or argv[0] in ("-h", "--help"):
-        sys.stdout.write("Usage: mcp_call.py [--list|--initialize] TOOL [JSON_ARGS]\n")
+        sys.stdout.write("Usage: mcp_call.py [--list|--initialize|--raw] TOOL [JSON_ARGS]\n")
         return 0
     client = McpClient()
     try:
@@ -117,6 +158,17 @@ def main(argv: List[str]) -> int:
             return 0
         if argv[0] == "--list":
             response = client.list_tools()
+            json.dump(response, sys.stdout, indent=2, sort_keys=True)
+            sys.stdout.write("\n")
+            return 0
+        if argv[0] == "--raw":
+            if len(argv) < 2:
+                raise RuntimeError("--raw requires a tool name")
+            tool = argv[1]
+            arguments = json.loads(argv[2]) if len(argv) > 2 else {}
+            if not isinstance(arguments, dict):
+                raise RuntimeError("JSON_ARGS must be an object")
+            response = client.call(tool, arguments)
             json.dump(response, sys.stdout, indent=2, sort_keys=True)
             sys.stdout.write("\n")
             return 0
