@@ -110,6 +110,26 @@ def orch_bin() -> str:
     return os.path.join(orch_root(), "bin", "orch")
 
 
+def _is_wsl_bash(path: str) -> bool:
+    normalized = path.replace("/", "\\").lower()
+    return normalized.endswith(r"\system32\bash.exe") or normalized.endswith(r"\sysnative\bash.exe")
+
+
+def bash_bin() -> str:
+    configured = os.environ.get("ORCH_BASH", "").strip()
+    if configured and not _is_wsl_bash(configured):
+        return configured
+    if sys.platform == "win32":
+        for root in (
+            os.environ.get("ProgramFiles", r"C:\Program Files"),
+            os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+        ):
+            candidate = os.path.join(root, "Git", "bin", "bash.exe")
+            if os.path.isfile(candidate):
+                return candidate
+    return "bash"
+
+
 def configure_stdio() -> None:
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
     os.environ.setdefault("PYTHONUTF8", "1")
@@ -220,7 +240,7 @@ def build_argv(command: str, flag_map: Mapping[str, str], arguments: Mapping[str
 
 
 def invoke_orch(argv: Sequence[str]) -> Dict[str, Any]:
-    command = ["bash", orch_bin()]
+    command = [bash_bin(), orch_bin()]
     command.extend(argv)
     try:
         # Close stdin so adapter version probes cannot consume MCP JSON-RPC.
