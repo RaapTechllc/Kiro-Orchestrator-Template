@@ -507,6 +507,45 @@ def envelope(command: str, invoked: Mapping[str, Any], extra: Mapping[str, Any])
     return payload
 
 
+def has_watchdog_marker(directory: str, name: str) -> bool:
+    native = os.path.join(native_path(directory), name)
+    return os.path.isfile(native) and not os.path.islink(native)
+
+
+def apply_ledger_outcome(payload: Dict[str, Any]) -> None:
+    """Fold marker and iteration status into the JSON envelope.
+
+    timed_out is true only when a watchdog marker exists. Exit 124 without a
+    marker stays a failure. Callers should not have to open meta.env or stat
+    provider.timeout.
+    """
+    timed_out = False
+    ledger = payload.get("ledger")
+    if isinstance(ledger, dict):
+        for entry in ledger.get("iterations") or []:
+            if not isinstance(entry, dict):
+                continue
+            directory = entry.get("dir")
+            if not isinstance(directory, str):
+                continue
+            entry_timed_out = has_watchdog_marker(directory, "provider.timeout")
+            entry["timed_out"] = entry_timed_out
+            meta = read_kv_data(join_display(directory, "meta.env"))
+            status = meta.get("status")
+            if entry_timed_out:
+                entry["status"] = "timed_out"
+                timed_out = True
+            elif status:
+                entry["status"] = status
+    run_dir = payload.get("run_dir")
+    if isinstance(run_dir, str) and has_watchdog_marker(run_dir, "provider.timeout"):
+        timed_out = True
+    evidence_dir = payload.get("evidence_dir")
+    if isinstance(evidence_dir, str) and has_watchdog_marker(evidence_dir, "verify.timeout"):
+        timed_out = True
+    payload["timed_out"] = timed_out
+
+
 def attach_ledger(payload: Dict[str, Any], run_dir: Optional[str], evidence_dir: Optional[str] = None) -> None:
     if run_dir:
         payload["run_dir"] = run_dir
@@ -523,6 +562,7 @@ def attach_ledger(payload: Dict[str, Any], run_dir: Optional[str], evidence_dir:
         payload["evidence_id"] = run_id_from(evidence_dir)
         payload["verification"] = read_kv_data(join_display(evidence_dir, "verify.env"))
         payload["evidence"] = existing_paths(evidence_dir, nested_iterations=False)
+    apply_ledger_outcome(payload)
 
 
 def handle_doctor(_arguments: Mapping[str, Any]) -> Tuple[Dict[str, Any], bool]:

@@ -90,7 +90,7 @@ Every root created by the kernel has a versioned `.orch-run` marker. Standalone 
 
 ## Agent-first MCP skin
 
-`orch mcp` speaks MCP JSON-RPC on stdio and invokes the same `doctor`, `run`, `loop`, and `verify` commands. It returns structured JSON (run id, status, ledger paths) so a third-party agent does not have to parse `summary.env` by hand. It does not replace the CLI, does not add a dashboard, and does not decide completion. See [docs/mcp.md](mcp.md).
+`orch mcp` speaks MCP JSON-RPC on stdio and invokes the same `doctor`, `run`, `loop`, and `verify` commands. It returns a JSON envelope (run id, status, `timed_out`, ledger paths, per-iteration status) so a third-party agent does not have to parse `summary.env` or stat watchdog markers. `timed_out` follows the same marker rule as the CLI. It does not replace the CLI, does not add a dashboard, and does not decide completion. See [docs/mcp.md](mcp.md).
 
 ## Safety properties
 

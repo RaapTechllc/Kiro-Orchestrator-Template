@@ -65,6 +65,7 @@ Successful tool results include `structuredContent` and the same object as text 
   "run_id": "20260813T142800Z-12345-loop",
   "run_dir": "/home/user/.local/state/orch/runs/20260813T142800Z-12345-loop",
   "status": "verified",
+  "timed_out": false,
   "iterations": 2,
   "ledger": {
     "dir": "/home/user/.local/state/orch/runs/20260813T142800Z-12345-loop",
@@ -80,7 +81,7 @@ Successful tool results include `structuredContent` and the same object as text 
 }
 ```
 
-`run` responses use `status=unverified` on a zero provider exit. Ledger `*.env` files are parsed as `key=value` data and are never sourced as shell. Provider stdout/stderr stay in the ledger; the MCP result returns paths, not log bodies or environment secrets. `cli_stderr` is omitted from the envelope so adapter tokens cannot leak. `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero.
+`run` responses use `status=unverified` on a zero provider exit. `timed_out` is true only when a watchdog marker exists in the run, an iteration, or a verify evidence directory; a natural exit 124 without a marker stays `failed`. Loop iterations include `status` and `timed_out` from each iteration ledger so callers do not open `meta.env`. Ledger `*.env` files are parsed as `key=value` data and are never sourced as shell. Provider stdout/stderr stay in the ledger; the MCP result returns paths, not log bodies or environment secrets. `cli_stderr` is omitted from the envelope so adapter tokens cannot leak. `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero.
 
 On Windows, use Git Bash (`C:\Program Files\Git\bin\bash.exe`), not `C:\Windows\System32\bash.exe`. The System32 binary is WSL and prints a UTF-16 “no distro” banner when no distribution is installed. `orch mcp` probes `python3`, `python`, and `py -3`, skips Microsoft Store aliases, converts the server path with `cygpath -w` when available, and writes one UTF-8 JSON-RPC line per message. Ledger I/O translates Git Bash paths (`/d/a/_temp/...`) so Windows Python can read `meta.env` while the JSON envelope keeps the original display path. Set `ORCH_PYTHON` to pin the interpreter and `ORCH_BASH` to pin Git Bash.
 

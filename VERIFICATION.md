@@ -1,6 +1,6 @@
 # Verification status
 
-**Last updated:** 2026-08-13
+**Last updated:** 2026-08-14
 **Scope:** provider-neutral beta kernel on `feat/multi-cli-orchestrator-v3`
 
 ## Verified locally
@@ -41,6 +41,9 @@
 | MCP reads Git Bash ledger paths on Windows | `/d/a/_temp/...` is translated for Windows Python; JSON keeps the display path |
 | MCP isError follows orch status | `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero |
 | MCP omits cli_stderr | failed-loop raw protocol result has no `cli_stderr` field |
+| MCP timed_out follows the watchdog marker | MCP run timeout JSON sets `timed_out=true` and `status=timed_out`; the marker file remains in the ledger |
+| MCP natural 124 is not a timeout | MCP run with unmarked exit 124 returns `status=failed` and `timed_out=false` |
+| MCP loop JSON folds iteration status | exhausted loop envelope includes `ledger.iterations[0].status` from `meta.env` without claiming `timed_out` |
 | Claude golden path works live | authenticated Claude Code created exact fixture output; external gate passed on iteration 1 |
 | Codex golden path works live on a current CLI | isolated Codex 0.144.5 created exact fixture output; external gate passed on iteration 1 |
 | Hermes golden path works live | authenticated Hermes created exact fixture output; external gate passed on iteration 1 |

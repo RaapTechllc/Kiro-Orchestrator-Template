@@ -16,3 +16,14 @@ Validation:
 bash tests/run.sh
 shellcheck -x -P . bin/orch lib/orch/adapters/*.sh lib/orch/timeout.sh tests/run.sh
 ```
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues on `RaapTechllc/Kiro-Orchestrator-Template` via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+

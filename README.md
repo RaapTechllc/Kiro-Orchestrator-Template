@@ -167,7 +167,7 @@ Runs a trusted verification command against a marked orchestrator run and append
 
 ### `mcp`
 
-Stdio MCP wrapper over the same four commands. Third-party agents get structured JSON (run id, status, ledger paths) instead of scraping `summary.env`. This does not replace the CLI and does not decide completion.
+Stdio MCP wrapper over the same four commands. Third-party agents get a JSON envelope (run id, status, `timed_out`, ledger paths, per-iteration status) instead of scraping `summary.env` or stat'ing watchdog markers. This does not replace the CLI and does not decide completion.
 
 ```bash
 ./bin/orch mcp --help
