@@ -1293,5 +1293,110 @@ test_mcp_marks_failed_orch_as_error_without_stderr_leak() {
 
 test_mcp_marks_failed_orch_as_error_without_stderr_leak || true
 
+test_mcp_run_json_reports_timeout_from_watchdog_marker() {
+  argv_log="$TEST_TMP/mcp-timeout-argv.log"
+  run_root="$TEST_TMP/mcp-timeout-artifacts"
+  make_stub claude 'sleep 30'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    mcp_call orch_run "$(printf '{"cli":"claude","task":"Expected timeout","timeout":1,"workdir":"%s","run_root":"%s"}' "$TEST_TMP" "$run_root")" \
+    2>"$TEST_TMP/mcp-timeout.err") || {
+    cat "$TEST_TMP/mcp-timeout.err" >&2
+    not_ok 'MCP timeout run returns JSON'
+    return
+  }
+
+  json_argv_has "$json" run || { not_ok 'MCP timeout JSON records orch argv starting with run'; return; }
+  if json_argv_has "$json" --unsafe; then
+    not_ok 'MCP timeout run omits --unsafe by default'
+    return
+  fi
+  [ "$(json_get "$json" status)" = timed_out ] || { not_ok 'MCP timeout run records status=timed_out'; return; }
+  [ "$(json_get "$json" timed_out)" = true ] || { not_ok 'MCP timeout JSON sets timed_out from the watchdog marker'; return; }
+  [ "$(json_get "$json" prose_is_not_done)" = true ] || { not_ok 'MCP timeout keeps the prose-is-not-done contract'; return; }
+  run_dir=$(json_get "$json" run_dir)
+  if [ -z "$run_dir" ] || [ ! -f "$run_dir/provider.timeout" ]; then
+    not_ok 'MCP timeout run still retains the watchdog marker in the ledger'
+    return
+  fi
+  ok 'MCP run JSON reports timed_out from the watchdog marker'
+}
+
+test_mcp_run_json_reports_timeout_from_watchdog_marker || true
+
+test_mcp_run_json_does_not_treat_natural_124_as_timeout() {
+  argv_log="$TEST_TMP/mcp-natural-124-argv.log"
+  run_root="$TEST_TMP/mcp-natural-124-artifacts"
+  make_stub claude 'cat >/dev/null || true
+exit 124'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    mcp_call orch_run "$(printf '{"cli":"claude","task":"Return 124 naturally","workdir":"%s","run_root":"%s"}' "$TEST_TMP" "$run_root")" \
+    2>"$TEST_TMP/mcp-natural-124.err") || {
+    cat "$TEST_TMP/mcp-natural-124.err" >&2
+    not_ok 'MCP natural-124 run returns JSON'
+    return
+  }
+
+  [ "$(json_get "$json" status)" = failed ] || { not_ok 'MCP natural 124 records status=failed'; return; }
+  [ "$(json_get "$json" timed_out)" = false ] || { not_ok 'MCP natural 124 does not set timed_out without a marker'; return; }
+  [ "$(json_get "$json" exit_code)" = 124 ] || { not_ok 'MCP natural 124 preserves exit code 124'; return; }
+  run_dir=$(json_get "$json" run_dir)
+  if [ -n "$run_dir" ] && [ -f "$run_dir/provider.timeout" ]; then
+    not_ok 'MCP natural 124 creates no watchdog marker'
+    return
+  fi
+  ok 'MCP run JSON keeps natural exit 124 distinct from a watchdog timeout'
+}
+
+test_mcp_run_json_does_not_treat_natural_124_as_timeout || true
+
+test_mcp_loop_json_folds_iteration_status_from_ledger() {
+  argv_log="$TEST_TMP/mcp-exhausted-argv.log"
+  run_root="$TEST_TMP/mcp-exhausted-artifacts"
+  make_stub claude 'printf "iteration provider output\\n"'
+  make_stub fail-gate 'printf "gate failed\\n"; exit 1'
+  make_orch_proxy
+
+  json=$(PATH="$(mcp_path)" \
+    ORCH_BIN="$TEST_TMP/bin/orch-proxy" \
+    ORCH_REAL_BIN="$ROOT/bin/orch" \
+    ORCH_TEST_ARGV_LOG="$argv_log" \
+    mcp_call orch_loop "$(printf '{"cli":"claude","task":"Will exhaust","verify":"fail-gate","max_iterations":1,"workdir":"%s","run_root":"%s"}' "$TEST_TMP" "$run_root")" \
+    2>"$TEST_TMP/mcp-exhausted.err") || {
+    cat "$TEST_TMP/mcp-exhausted.err" >&2
+    not_ok 'MCP exhausted loop returns JSON'
+    return
+  }
+
+  [ "$(json_get "$json" status)" = exhausted ] || { not_ok 'MCP exhausted loop records status=exhausted'; return; }
+  [ "$(json_get "$json" timed_out)" = false ] || { not_ok 'MCP exhausted loop does not claim timed_out'; return; }
+  [ "$(json_get "$json" prose_is_not_done)" = true ] || { not_ok 'MCP exhausted loop keeps prose-is-not-done'; return; }
+  [ "$(json_get "$json" ledger.iterations.0.status)" = unverified ] || {
+    printf '%s\n' "$json" >&2
+    not_ok 'MCP loop JSON folds iteration status from meta.env'
+    return
+  }
+  [ "$(json_get "$json" ledger.iterations.0.timed_out)" = false ] || {
+    not_ok 'MCP loop JSON folds iteration timed_out from the watchdog marker'
+    return
+  }
+  if json_argv_has "$json" --unsafe; then
+    not_ok 'MCP exhausted loop omits --unsafe by default'
+    return
+  fi
+  ok 'MCP loop JSON folds per-iteration status from the ledger'
+}
+
+test_mcp_loop_json_folds_iteration_status_from_ledger || true
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
