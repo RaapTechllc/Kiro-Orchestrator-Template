@@ -16,8 +16,34 @@ def repo_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _is_wsl_bash(path: str) -> bool:
+    normalized = path.replace("/", "\\").lower()
+    return normalized.endswith(r"\system32\bash.exe") or normalized.endswith(r"\sysnative\bash.exe")
+
+
+def _git_bash() -> str:
+    roots = [
+        os.environ.get("ProgramFiles", r"C:\Program Files"),
+        os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+    ]
+    for root in roots:
+        candidate = os.path.join(root, "Git", "bin", "bash.exe")
+        if os.path.isfile(candidate):
+            return candidate
+    return ""
+
+
 def orch_mcp_cmd() -> List[str]:
-    return ["bash", os.path.join(repo_root(), "bin", "orch"), "mcp"]
+    orch = os.path.join(repo_root(), "bin", "orch")
+    bash = os.environ.get("ORCH_BASH") or ""
+    if sys.platform == "win32":
+        if not bash or _is_wsl_bash(bash):
+            bash = _git_bash()
+        if bash and not _is_wsl_bash(bash):
+            return [bash, orch, "mcp"]
+        # Last resort: talk to the same Python server orch mcp would exec.
+        return [sys.executable, "-u", os.path.join(repo_root(), "lib", "orch", "mcp_server.py")]
+    return [bash or "bash", orch, "mcp"]
 
 
 def next_jsonrpc_line(readline: Readline) -> Dict[str, Any]:

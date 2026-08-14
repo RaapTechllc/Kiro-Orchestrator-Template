@@ -5,6 +5,13 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 TEST_PYTHON=$(command -v python3 2>/dev/null || true)
 [ -n "$TEST_PYTHON" ] || TEST_PYTHON=$(command -v python 2>/dev/null || true)
+# Windows Python's PATH prefers System32\bash.exe (WSL). Pin the Git Bash that
+# is already running this suite so mcp_call does not get a UTF-16 WSL banner.
+ORCH_BASH=$(command -v bash 2>/dev/null || true)
+if command -v cygpath >/dev/null 2>&1 && [ -n "$ORCH_BASH" ]; then
+  ORCH_BASH=$(cygpath -w "$ORCH_BASH")
+fi
+export ORCH_BASH
 TEST_TMP_PARENT=${TEST_TMP:-${TMPDIR:-/tmp}}
 mkdir -p "$TEST_TMP_PARENT"
 TEST_TMP=$(mktemp -d "$TEST_TMP_PARENT/orch-tests.XXXXXX")
@@ -1200,6 +1207,33 @@ PY
 }
 
 test_mcp_client_skips_stdio_banners || true
+
+test_mcp_call_rejects_wsl_system32_bash() {
+  output=$("$(python_bin)" - "$ROOT/tests/mcp_call.py" <<'PY'
+import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location("mcp_call", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+if not mod._is_wsl_bash(r"C:\Windows\System32\bash.exe"):
+    raise SystemExit("System32 bash must be treated as WSL")
+if not mod._is_wsl_bash(r"C:\WINDOWS\Sysnative\bash.exe"):
+    raise SystemExit("Sysnative bash must be treated as WSL")
+if mod._is_wsl_bash(r"C:\Program Files\Git\bin\bash.exe"):
+    raise SystemExit("Git Bash must not be treated as WSL")
+print("wsl-bash-rejected")
+PY
+  ) || {
+    printf '%s\n' "$output" >&2
+    not_ok 'MCP client classifies WSL System32 bash'
+    return
+  }
+  assert_contains "$output" 'wsl-bash-rejected' 'MCP client reports WSL bash detection' || return
+  ok 'MCP client refuses Windows System32 WSL bash for orch mcp'
+}
+
+test_mcp_call_rejects_wsl_system32_bash || true
 
 test_mcp_marks_failed_orch_as_error_without_stderr_leak() {
   raw=$(mcp_call --raw orch_loop '{"task":"cannot self-certify"}' 2>"$TEST_TMP/mcp-iserror.err") || {
