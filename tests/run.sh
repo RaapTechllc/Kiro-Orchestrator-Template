@@ -1039,7 +1039,12 @@ test_mcp_run_maps_to_orch_and_returns_ledger_json() {
     return
   fi
   [ "$run_id" = "$(basename "$run_dir")" ] || { not_ok 'MCP run_id matches the ledger directory name'; return; }
-  [ -f "$(json_get "$json" ledger.meta)" ] || { not_ok 'MCP run JSON points at meta.env without requiring hand parsing'; return; }
+  meta_path=$(json_get "$json" ledger.meta)
+  if [ -z "$meta_path" ] || [ ! -f "$meta_path" ]; then
+    printf 'ledger.meta=%s\n%s\n' "$meta_path" "$json" >&2
+    not_ok 'MCP run JSON points at meta.env without requiring hand parsing'
+    return
+  fi
   [ -f "$(json_get "$json" ledger.prompt)" ] || { not_ok 'MCP run JSON points at prompt.md'; return; }
   [ "$(json_get "$json" meta.status)" = unverified ] || { not_ok 'MCP run parses meta.env as data'; return; }
   assert_not_contains "$json" 'sk-test-secret-should-not-leak' 'MCP JSON does not echo secrets from the environment' || return
@@ -1109,7 +1114,11 @@ printf "verification passed on iteration %s\\n" "$count"'
   json_argv_has "$json" --verify || { not_ok 'MCP loop forwards --verify to orch'; return; }
   [ "$(json_get "$json" status)" = verified ] || { not_ok 'MCP loop reports verified only after the gate passes'; return; }
   [ "$(json_get "$json" iterations)" = 2 ] || { not_ok 'MCP loop JSON reports the iteration count'; return; }
-  [ "$(json_get "$json" summary.status)" = verified ] || { not_ok 'MCP loop parses summary.env as data'; return; }
+  if [ "$(json_get "$json" summary.status)" != verified ]; then
+    printf '%s\n' "$json" >&2
+    not_ok 'MCP loop parses summary.env as data'
+    return
+  fi
   [ -f "$(json_get "$json" ledger.summary)" ] || { not_ok 'MCP loop JSON points at summary.env'; return; }
   [ -d "$(json_get "$json" run_dir)" ] || { not_ok 'MCP loop JSON includes the loop ledger path'; return; }
   ok 'MCP loop maps to orch loop and returns verified only after the external gate'
@@ -1145,7 +1154,11 @@ test_mcp_verify_maps_to_orch_verify() {
     not_ok 'MCP verify JSON includes the evidence directory'
     return
   fi
-  [ "$(json_get "$json" verification.status)" = passed ] || { not_ok 'MCP verify parses verify.env as data'; return; }
+  if [ "$(json_get "$json" verification.status)" != passed ]; then
+    printf '%s\n' "$json" >&2
+    not_ok 'MCP verify parses verify.env as data'
+    return
+  fi
   [ -f "$(json_get "$json" evidence.verify_env)" ] || { not_ok 'MCP verify JSON points at verify.env'; return; }
   ok 'MCP verify maps to orch verify and returns structured evidence paths'
 }
@@ -1168,10 +1181,12 @@ test_mcp_reads_env_artifacts_as_data() {
   }
 
   [ ! -e "$TEST_TMP/mcp-env-pwned" ] || { not_ok 'MCP does not source ledger .env files as shell'; return; }
-  [ "$(json_get "$json" meta.pwn)" = "$(printf '$(touch %s/mcp-env-pwned)' "$TEST_TMP")" ] || {
+  expected_pwn=$(printf '$(touch %s/mcp-env-pwned)' "$TEST_TMP")
+  if [ "$(json_get "$json" meta.pwn)" != "$expected_pwn" ]; then
+    printf 'expected meta.pwn=%s\n%s\n' "$expected_pwn" "$json" >&2
     not_ok 'MCP returns env values as literal data'
     return
-  }
+  fi
   json_argv_has "$json" --dry-run || { not_ok 'MCP verify dry-run forwards --dry-run'; return; }
   ok 'MCP treats ledger .env files as data rather than shell'
 }
@@ -1234,6 +1249,35 @@ PY
 }
 
 test_mcp_call_rejects_wsl_system32_bash || true
+
+test_mcp_translates_msys_paths_for_windows_python() {
+  output=$("$(python_bin)" - "$ROOT/lib/orch/mcp_server.py" <<'PY'
+import importlib.util
+import sys
+
+spec = importlib.util.spec_from_file_location("mcp_server", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+if mod.msys_drive_to_win("/d/a/_temp/foo") != r"D:\a\_temp\foo":
+    raise SystemExit("drive-letter MSYS path must become a Windows path")
+if mod.msys_drive_to_win("/cygdrive/c/Users/x") != r"C:\Users\x":
+    raise SystemExit("cygdrive path must become a Windows path")
+if mod.msys_drive_to_win("/usr/bin/bash") != "/usr/bin/bash":
+    raise SystemExit("non-drive POSIX paths must stay unchanged")
+if mod.join_display("/d/a/run", "meta.env") != "/d/a/run/meta.env":
+    raise SystemExit("display join must keep POSIX ledger paths")
+print("msys-path-ok")
+PY
+  ) || {
+    printf '%s\n' "$output" >&2
+    not_ok 'MCP translates Git Bash ledger paths for Windows Python'
+    return
+  }
+  assert_contains "$output" 'msys-path-ok' 'MCP reports MSYS path translation' || return
+  ok 'MCP translates Git Bash ledger paths so Windows Python can read meta.env'
+}
+
+test_mcp_translates_msys_paths_for_windows_python || true
 
 test_mcp_marks_failed_orch_as_error_without_stderr_leak() {
   raw=$(mcp_call --raw orch_loop '{"task":"cannot self-certify"}' 2>"$TEST_TMP/mcp-iserror.err") || {

@@ -38,6 +38,7 @@
 | MCP handshake works on Git Bash | client skips blank/banner lines; server writes UTF-8 JSON-RPC and probes python3/python/py |
 | MCP client refuses WSL bash | System32/Sysnative `bash.exe` is classified as WSL; Git Bash is not |
 | MCP invoke_orch uses Git Bash on Windows | `ORCH_BASH` / Git `bash.exe` is used instead of System32 WSL bash |
+| MCP reads Git Bash ledger paths on Windows | `/d/a/_temp/...` is translated for Windows Python; JSON keeps the display path |
 | MCP isError follows orch status | `tools/call` sets `isError` when `ok` is false or `exit_code` is non-zero |
 | MCP omits cli_stderr | failed-loop raw protocol result has no `cli_stderr` field |
 | Claude golden path works live | authenticated Claude Code created exact fixture output; external gate passed on iteration 1 |

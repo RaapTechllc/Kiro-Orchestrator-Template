@@ -130,6 +130,101 @@ def bash_bin() -> str:
     return "bash"
 
 
+def msys_drive_to_win(path: str) -> str:
+    """Translate /d/foo or /cygdrive/d/foo. Leave /usr/bin and other POSIX paths alone."""
+    match = re.match(r"^/(?:cygdrive/)?([A-Za-z])(/.*)?$", path)
+    if not match:
+        return path
+    rest = (match.group(2) or "").replace("/", "\\")
+    if not rest:
+        rest = "\\"
+    return match.group(1).upper() + ":" + rest
+
+
+def join_display(root: str, *parts: str) -> str:
+    if not parts:
+        return root
+    cleaned = [part.strip("/\\") for part in parts]
+    if "\\" not in root and (root.startswith("/") or "/" in root):
+        return root.rstrip("/") + "/" + "/".join(cleaned)
+    return os.path.join(root, *cleaned)
+
+
+_CYGPATH_EXE = None
+_NATIVE_PATH_CACHE: Dict[str, str] = {}
+
+
+def _cygpath_exe() -> str:
+    global _CYGPATH_EXE
+    if _CYGPATH_EXE is not None:
+        return _CYGPATH_EXE
+    candidates = []
+    bash = bash_bin()
+    if bash and bash != "bash":
+        bash_dir = os.path.dirname(bash)
+        candidates.append(os.path.join(bash_dir, "cygpath.exe"))
+        candidates.append(os.path.join(os.path.dirname(bash_dir), "usr", "bin", "cygpath.exe"))
+    for root in (
+        os.environ.get("ProgramFiles", r"C:\Program Files"),
+        os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+    ):
+        candidates.append(os.path.join(root, "Git", "usr", "bin", "cygpath.exe"))
+        candidates.append(os.path.join(root, "Git", "bin", "cygpath.exe"))
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            _CYGPATH_EXE = candidate
+            return candidate
+    _CYGPATH_EXE = ""
+    return ""
+
+
+def _cygpath_w(path: str) -> str:
+    exe = _cygpath_exe()
+    if not exe:
+        return ""
+    try:
+        completed = subprocess.run(
+            [exe, "-w", path],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError:
+        return ""
+    if completed.returncode != 0:
+        return ""
+    return completed.stdout.strip()
+
+
+def native_path(path: str) -> str:
+    """Open Git Bash / MSYS paths with Windows Python.
+
+    orch stdout uses POSIX paths such as /d/a/_temp/run. Windows Python cannot
+    stat those, so ledger reads would silently omit meta.env / summary.env.
+    JSON still emits the original display path so Git Bash tests can [ -f ] it.
+    """
+    if not path:
+        return path
+    cached = _NATIVE_PATH_CACHE.get(path)
+    if cached is not None:
+        return cached
+    resolved = path
+    if sys.platform == "win32" and not os.path.exists(path):
+        translated = msys_drive_to_win(path)
+        if translated != path and os.path.exists(translated):
+            resolved = translated
+        else:
+            via_cygpath = _cygpath_w(path)
+            if via_cygpath:
+                resolved = via_cygpath
+            elif translated != path:
+                resolved = translated
+    _NATIVE_PATH_CACHE[path] = resolved
+    return resolved
+
+
 def configure_stdio() -> None:
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
     os.environ.setdefault("PYTHONUTF8", "1")
@@ -268,7 +363,6 @@ def invoke_orch(argv: Sequence[str]) -> Dict[str, Any]:
         "ok": completed.returncode == 0,
         "exit_code": completed.returncode,
         "cli_stdout": completed.stdout,
-        "cli_stderr": completed.stderr,
         "orch_argv": list(argv),
     }
 
@@ -333,9 +427,10 @@ def parse_doctor(stdout: str) -> Dict[str, Any]:
 
 def read_kv_data(path: str) -> Dict[str, str]:
     data: Dict[str, str] = {}
-    if os.path.islink(path) or not os.path.isfile(path):
+    native = native_path(path)
+    if os.path.islink(native) or not os.path.isfile(native):
         return data
-    with open(path, encoding="utf-8", errors="replace") as handle:
+    with open(native, encoding="utf-8", errors="replace") as handle:
         for line in handle:
             line = line.rstrip("\n\r")
             if not line or "=" not in line:
@@ -348,26 +443,27 @@ def read_kv_data(path: str) -> Dict[str, str]:
 
 
 def existing_paths(directory: str, nested_iterations: bool = True) -> Dict[str, Any]:
+    native_dir = native_path(directory)
     ledger: Dict[str, Any] = {"dir": directory}
     for key, name in LEDGER_FILES:
-        path = os.path.join(directory, name)
-        if os.path.isfile(path) and not os.path.islink(path):
-            ledger[key] = path
+        native_file = os.path.join(native_dir, name)
+        if os.path.isfile(native_file) and not os.path.islink(native_file):
+            ledger[key] = join_display(directory, name)
     if not nested_iterations:
         return ledger
     iterations = []
     try:
-        names = sorted(os.listdir(directory))
+        names = sorted(os.listdir(native_dir))
     except OSError:
         names = []
     for name in names:
         if not name.startswith("iteration-"):
             continue
-        child = os.path.join(directory, name)
-        if not os.path.isdir(child) or os.path.islink(child):
+        child_native = os.path.join(native_dir, name)
+        if not os.path.isdir(child_native) or os.path.islink(child_native):
             continue
         suffix = name.split("-", 1)[1]
-        entry = existing_paths(child, nested_iterations=False)
+        entry = existing_paths(join_display(directory, name), nested_iterations=False)
         try:
             entry["index"] = int(suffix)
         except ValueError:
@@ -379,10 +475,10 @@ def existing_paths(directory: str, nested_iterations: bool = True) -> Dict[str, 
     for name in names:
         if "-verification" not in name:
             continue
-        child = os.path.join(directory, name)
-        if not os.path.isdir(child) or os.path.islink(child):
+        child_native = os.path.join(native_dir, name)
+        if not os.path.isdir(child_native) or os.path.islink(child_native):
             continue
-        evidence.append(existing_paths(child, nested_iterations=False))
+        evidence.append(existing_paths(join_display(directory, name), nested_iterations=False))
     if evidence:
         ledger["evidence"] = evidence
     return ledger
@@ -416,10 +512,8 @@ def attach_ledger(payload: Dict[str, Any], run_dir: Optional[str], evidence_dir:
         payload["run_dir"] = run_dir
         payload["run_id"] = run_id_from(run_dir)
         payload["ledger"] = existing_paths(run_dir)
-        meta_path = os.path.join(run_dir, "meta.env")
-        summary_path = os.path.join(run_dir, "summary.env")
-        meta = read_kv_data(meta_path)
-        summary = read_kv_data(summary_path)
+        meta = read_kv_data(join_display(run_dir, "meta.env"))
+        summary = read_kv_data(join_display(run_dir, "summary.env"))
         if meta:
             payload["meta"] = meta
         if summary:
@@ -427,7 +521,7 @@ def attach_ledger(payload: Dict[str, Any], run_dir: Optional[str], evidence_dir:
     if evidence_dir:
         payload["evidence_dir"] = evidence_dir
         payload["evidence_id"] = run_id_from(evidence_dir)
-        payload["verification"] = read_kv_data(os.path.join(evidence_dir, "verify.env"))
+        payload["verification"] = read_kv_data(join_display(evidence_dir, "verify.env"))
         payload["evidence"] = existing_paths(evidence_dir, nested_iterations=False)
 
 
